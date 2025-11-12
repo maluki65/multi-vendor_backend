@@ -38,10 +38,25 @@ const orderSchema = new mongoose.Schema({
     default: 'pending',
     index: true,
   },
+  statusHisory: [
+    {
+      from: { type: String },
+      to: { type: String },
+      changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Users' },
+      role: { type: String, enum: ['Admin', 'Vendor', 'Buyer'] },
+      date: { type: Date, default: Date.now },
+    },
+  ],
   shippingAddress: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
+
+// On auto-updating `updatedAt` field before saving
+orderSchema.pre('save', function (next){
+  this.updatedAt = new Date();
+  next();
+});
 
 orderSchema.index({ buyerId: 1, vendorId:1, productId: 1, orderStatus: 1, createdAt: -1 });
 

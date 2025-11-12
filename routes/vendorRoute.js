@@ -40,7 +40,7 @@ router.get('/:id/vendor/profile', protect, getVendorProfile);
 // On Vendor products 
 router.post('/vendor/product', protect, restrictTo('Vendor'), createProduct);
 
-router.get('/vendor/products', protect, restrictTo('Vendor'), getVendorProducts);
+router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
 
 router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
