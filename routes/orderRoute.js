@@ -18,6 +18,6 @@ router.get('/orders/buyer', protect, restrictTo('Buyer'), getBuyerOrders);
 router.get('orders/admin/all', protect, restrictTo('Admin'), getAllOrders);
 
 // On updating order status
-router.patch('/prders/:id/status', protect, updateOrderStatus);
+router.patch('/orders/:id/status', protect, updateOrderStatus);
 
 module.exports = router;

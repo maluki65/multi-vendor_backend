@@ -7,6 +7,11 @@ const productSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  category: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true,
+  },
   name:{ type: String, required: true, index: true },
   description: { type: String, required: true },
   tags: [String],

@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const orderItemSchema = new mongoose.Schema({
+  productId:{
+    type: mongoose.Schema.ObjectId,
+    ref:'Product',
+    required: true,
+    index: true,
+  },
+  name: String,
+  price: Number,
+  quantity: Number,
+  commissionRate: { type: Number },
+  commissionAmount: { type: Number },
+  vendorEarnings: { type: Number },
+});
+
+
 const orderSchema = new mongoose.Schema({
   buyerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -13,20 +29,7 @@ const orderSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  products: [
-    {
-      productId:{
-        type: mongoose.Schema.ObjectId,
-        ref:'Product',
-        required: true,
-        index: true,
-      },
-      name: String,
-      price: Number,
-      quantity: Number,
-    },
-  ],
-  totalAmount: { type: Number, required: true },
+  products: [orderItemSchema],
   paymentStatus: {
     type: String,
     enum: ['pending',  'completed', 'failed'],
@@ -47,6 +50,10 @@ const orderSchema = new mongoose.Schema({
       date: { type: Date, default: Date.now },
     },
   ],
+  totalAmount: { type: Number, required: true },
+  paymentProvider: { type: String },
+  paymentReference: { type: String },
+  vendorEarnings: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
