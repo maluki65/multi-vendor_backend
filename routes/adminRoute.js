@@ -4,6 +4,7 @@ const { getPendingVendors, approveVendor, rejectVendor } = require('../controlle
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
+const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = require('../controllers/commissionController');
 
 const router = express.Router();
 
@@ -39,5 +40,12 @@ router.patch('/vendor/approve', protect, restrictTo('Admin', approveVendor));
 
 // On rejecting vendor
 router.patch('/vendor/reject', protect, restrictTo('Admin', rejectVendor));
+
+// On admin commissions
+router.get('/vendor/commissions/all', protect, restrictTo('Admin'), getAllCommissions);
+
+router.get('/vendor/commissions/:vendorId', protect, restrictTo('Admin'), getCommissionByVendor);
+
+router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAdminCommission);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const express = require('express');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const { createUpdateVendorProfile, getVendorStats, getVendorOrders, getVendorProfile  } = require('../controllers/vendorController');
+const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct } = require('../controllers/productController');
 const User = require('../models/userModel');
 
@@ -47,6 +48,9 @@ router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getPro
 router.put('/vendor/product/:id', protect, restrictTo('Vendor'), updateProduct);
 
 router.delete('/vendor/product/:id', protect, restrictTo('Vendor'), deleteProduct);
+
+// On vendor earnings
+router.get('/vendor/earnings', protect, restrictTo('Vendor', 'Admin'), getVendorEarnings);
 
 
 module.exports = router

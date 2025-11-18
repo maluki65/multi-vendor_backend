@@ -41,7 +41,7 @@ const orderSchema = new mongoose.Schema({
     default: 'pending',
     index: true,
   },
-  statusHisory: [
+  statusHistory: [
     {
       from: { type: String },
       to: { type: String },
@@ -55,6 +55,9 @@ const orderSchema = new mongoose.Schema({
   paymentReference: { type: String },
   vendorEarnings: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
+  mpesaReceipt: { type: String },
+  checkoutRequestId: { type: String },
+  merchantRequestId: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
@@ -65,6 +68,6 @@ orderSchema.pre('save', function (next){
   next();
 });
 
-orderSchema.index({ buyerId: 1, vendorId:1, productId: 1, orderStatus: 1, createdAt: -1 });
+orderSchema.index({ buyerId: 1, vendorId:1, 'products.productId': 1, orderStatus: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

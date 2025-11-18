@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const vendorProfileSchema = new mongoose.Schema({
-  vendoId: {
+  vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Users',
     required: true,
@@ -24,7 +24,7 @@ const vendorProfileSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-vendorProfileSchema.index({ vendoId:1, storeName: 1, createdAt: -1 });
+vendorProfileSchema.index({ vendorId:1, storeName: 1, createdAt: -1 });
 
 
 module.exports = mongoose.model('VendorProfile', vendorProfileSchema);
