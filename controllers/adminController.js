@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 const { sendMail } = require('../utils/nodemailer');
 
@@ -86,6 +87,24 @@ exports.rejectVendor = async (req, res, next) => {
       message: `${vendor.username}'s vendor request has been rejected.`, vendor,
     });
   }  catch (error){
+    next(error);
+  }
+};
+
+// On getting all cancelled orders
+exports.getAllCancelledOrders = async (req, res, next) => {
+  try{
+    const orders = await Order.find({ orderStatus: 'cancelled'})
+    .populate('buyerId', 'username email')
+    .populate('vendorId', 'storeName')
+    .populate('products.productId', 'name MainIMg price');
+
+    res.status(200).json({
+      status: 'success',
+      orders
+    });
+
+  } catch(error){
     next(error);
   }
 };

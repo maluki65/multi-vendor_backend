@@ -7,6 +7,8 @@ const cookieParser = require('cookie-parser');
 const UserRoutes = require('./routes/usersRoute.js');
 const AdminRoutes = require('./routes/adminRoute.js');
 const VendorRoutes = require('./routes/vendorRoute.js');
+//const BuyerRoutes = require('./routes/BuyerRoute.js');
+const CartRoutes = require('./routes/cartRoute.js');
 const OrderRoutes = require('./routes/orderRoute.js');
 const globalErrorHandler = require('./middlewares/errorController.js');
 
@@ -30,6 +32,7 @@ app.use(cors(corsOptions));
 app.use('/v1/api/user', UserRoutes);
 app.use('/v1/api/admin', AdminRoutes);
 app.use('/v1/api/vendor', VendorRoutes);
+app.use('/v1/api/cart', CartRoutes);
 app.use('/v1/api/orders', OrderRoutes);
 
 app.use(globalErrorHandler);

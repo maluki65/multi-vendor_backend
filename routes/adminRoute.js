@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getPendingVendors, approveVendor, rejectVendor } = require('../controllers/adminController');
+const { getPendingVendors, approveVendor, rejectVendor, getAllCancelledOrders } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -47,5 +47,7 @@ router.get('/vendor/commissions/all', protect, restrictTo('Admin'), getAllCommis
 router.get('/vendor/commissions/:vendorId', protect, restrictTo('Admin'), getCommissionByVendor);
 
 router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAdminCommission);
+
+router.get('/admin/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
 
 module.exports = router;

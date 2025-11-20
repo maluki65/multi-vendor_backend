@@ -42,13 +42,16 @@ exports.getAllOrders = async(req, res, next) => {
 exports.getBuyerOrders = async ( req, res, next ) => {
   try {
     const buyerId = req.user.id;
+
     const orders = await Order.find({ buyerId })
     .populate('vendorId', 'storeName email')
-    .populate('products.productId', 'name MainIMg price');
+    .populate('products.productId', 'name MainIMg price')
+    .sort({ createdAt: -1 });
 
     res.status(200).json({
       status: 'success',
-      results: orders.length, orders
+      results: orders.length, 
+      orders
     });
   } catch (error) {
     next(error);
@@ -187,6 +190,53 @@ exports.createOrder = async (req, res, next) => {
       order,
     })
   } catch (error) {
+    next(error);
+  }
+};
+
+// On cancelling orders
+exports.cancleOrder = async (req, res, next) => {
+  try{
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if(!order) return next(new createError('Order not found', 404));
+
+    // On checking buyer permission
+    if (req.user.role === 'Buyer') {
+      if (order.buyerId.toString() !== req.user.id)
+        return next(new createError('Not authorized to cancel this order', 403))
+
+      if (order.orderStatus === 'shipped' || order.orderStatus == 'completed')
+        return next(new createError("You can't cancel this order anymore", 400));
+    }
+
+    // On making sure vendor cannot cancel order
+    if (req.user.role === 'Vendor') {
+      return next(new createError('Vendor cannot cancel orders', 403));
+    }
+
+    const oldStatus = order.orderStatus;
+
+    order.orderStatus = 'cancelled';
+    order.paymentStatus = 'failed';
+
+    order.statusHistory.push({
+      from: oldStatus,
+      to: 'cancelled',
+      changedBy: req.user.id,
+      role: req.user.role,
+    });
+
+    await order.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order cancelled successfully',
+      order
+    });
+
+  } catch(error){
     next(error);
   }
 };
