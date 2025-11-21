@@ -1,5 +1,5 @@
 const express = require('express');
-const { AddToCart, getCart, updateCartQuantity, removeFromCart, startCheckout } = require('../controllers/cartController');
+const { AddToCart, getCart, updateCartQuantity, removeFromCart } = require('../controllers/cartController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 
@@ -8,7 +8,6 @@ const router = express.Router();
 // On POST routes
 router.post('/cart/add', protect, restrictTo('Buyer'), AddToCart);
 
-router.post('/checkout/start', protect, restrictTo('Buyer'), startCheckout);
 
 // On GET routes
 router.get('/cart', protect, restrictTo('Buyer'), getCart);

@@ -44,8 +44,6 @@ exports.getBuyerOrders = async ( req, res, next ) => {
     const buyerId = req.user.id;
 
     const orders = await Order.find({ buyerId })
-    .populate('vendorId', 'storeName email')
-    .populate('products.productId', 'name MainIMg price')
     .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -195,7 +193,7 @@ exports.createOrder = async (req, res, next) => {
 };
 
 // On cancelling orders
-exports.cancleOrder = async (req, res, next) => {
+exports.cancelOrder  = async (req, res, next) => {
   try{
     const { id } = req.params;
 

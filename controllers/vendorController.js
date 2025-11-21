@@ -104,21 +104,21 @@ exports.getVendorCancelledOrders = async(req, res, next) => {
   try{
     const vendorId = req.user.id;
 
-    const vendorProfile = await VendorProfile.findOne({ vendorId});
-    if(!vendorProfile) return next(new createError('Vendor nt found', 404));
+    const vendorProfile = await VendorProfile.findOne({ vendorId });
+    if(!vendorProfile) return next(new createError('Vendor not found', 404));
 
     const orders = await Orders.find({
       vendorId: vendorProfile._id,
       orderStatus: 'cancelled'
     })
     .populate('buyerId', 'username email')
-    .populate('product.productId', 'name MainIMg price')
+    .populate('products.productId', 'name MainIMg price')
     .sort({ createdAt: -1 });
 
     res.status(200).json({
       status: 'success',
       results: orders.length,
-      orders
+      orders,
     });
 
   } catch (error) {

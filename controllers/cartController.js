@@ -6,22 +6,40 @@ const Order = require('../models/orderModel');
 // On creating a cart 
 exports.AddToCart = async (req, res, next) => {
   try{
-    const userId = req.user.id;
+    const buyerId = req.user.id;
     const { productId, quantity } = req.body;
 
-    let cart = await Cart.findOne({ userId });
+    const product = await Product.findById(productId);
+    if(!product) return next(new createError('product not found', 404));
 
+    // On snapshop info
+    const snapshop = {
+      productId,
+      quantity,
+      name: product.name,
+      price: product.price,
+      image: product.MainIMg,
+      vendorId: product.vendorId
+    };
+
+    let cart = await Cart.findOne({ buyerId });
+
+    // if no cart create one
     if(!cart) {
       cart = await Cart.create({
-        userId,
-        items: [{ productId, quantity }]
+        buyerId,
+        items: [ snapshop ]
       });
     } else {
       const item = cart.items.find(i => i.productId.toString() === productId);
 
-      if (item) item.quantity += quantity;
-      else cart.items.push({ productId, quantity });
+      if (item) {
+        item.quantity += quantity;
+      } else {
+        cart.items.push(snapshop);
+      }
 
+      cart.updatedAt = Date.now();
       await cart.save();
     }
 
@@ -38,9 +56,9 @@ exports.AddToCart = async (req, res, next) => {
 // On getting a cart
 exports.getCart = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const buyerId = req.user.id;
 
-    const cart = await Cart.findOne({ userId }).populate('items.productId', 'name price MainIMg vendorId');
+    const cart = await Cart.findOne({ buyerId });
 
     res.status(200).json({ 
       status: 'success',
@@ -54,16 +72,27 @@ exports.getCart = async (req, res, next) => {
 // On updating quantity of the cart (PUT)
 exports.updateCartQuantity = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const buyerId = req.user.id;
     const { productId, quantity } = req.body;
 
-    const cart =  await Cart.findOne({ userId });
+    if (quantity < 0) {
+      return next(new createError('Quantity cannot be negative', 400));
+    }
+
+    const cart =  await Cart.findOne({ buyerId });
     if (!cart) return next(new createError('Cart not found', 404));
 
     const item = cart.items.find(i => i.productId.toString() === productId);
     if (!item) return next(new createError('Product not in cart', 404));
 
-    item.quantity = quantity;
+    // If quantity is 0, reove item from cart
+    if (quantity === 0) {
+      cart.items = cart.items.filter( i => i.productId.toString() !== productId);
+    } else {
+      item.quantity = quantity;
+    }
+
+    cart.updatedAt = Date.now();
     await cart.save();
 
     res.status(200).json({
@@ -79,11 +108,11 @@ exports.updateCartQuantity = async (req, res, next) => {
 // On removing cart
 exports.removeFromCart = async (req, res, next) => {
   try{
-    const userId = req.user.id;
-    const { productId } = req.params;
+    const buyerId = req.user.id;
+    const { productId } = req.body;
 
-    const cart = await Cart.findOne(
-      { userId },
+    const cart = await Cart.findOneAndUpdate(
+      { buyerId },
       { $pull: { items: { productId }}},
       { new: true }
     );
@@ -98,13 +127,13 @@ exports.removeFromCart = async (req, res, next) => {
   }
 };
 
-// On starting checkout
+/* On starting checkout
 exports.startCheckout = async (req, res, next) => {
   try {
     const buyerId = req.user.id;
     const { shippingAddress } = req.body;
 
-    const cart = await Cart.findOne({ userId: buyerId })
+    const cart = await Cart.findOne({ buyerId })
       .populate('items.productId', 'name price vendorId category quantity');
 
     if (!cart || cart.items.length === 0)
@@ -178,4 +207,4 @@ exports.startCheckout = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+};*/

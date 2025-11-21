@@ -1,5 +1,5 @@
 const express =  require('express');
-const { getVendorOrders, getAllOrders, getOrderbyId, getBuyerOrders, updateOrderStatus, createOrder, cancleOrder } = require('../controllers/orderController');
+const { getVendorOrders, getAllOrders, getOrderbyId, getBuyerOrders, updateOrderStatus, createOrder, cancelOrder } = require('../controllers/orderController');
 const { getBuyerCancelledOrders  } = require('../controllers/buyerController');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const { protect } = require('../middlewares/middleware');
@@ -25,6 +25,6 @@ router.get('/orders/buyer/cancelled', protect, restrictTo('Buyer'), getBuyerCanc
 // On updating order status
 router.patch('/orders/:id/status', protect, updateOrderStatus);
 
-router.patch('/orders/cancel/:id', protect, restrictTo('Buyer'), cancleOrder);
+router.patch('/orders/cancel/:id', protect, restrictTo('Buyer'), cancelOrder);
 
 module.exports = router;
