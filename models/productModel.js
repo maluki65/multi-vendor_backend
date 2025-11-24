@@ -39,4 +39,30 @@ const productSchema = new mongoose.Schema({
 
 productSchema.index({ vendorId:1, status: 1, price: 1, createdAt: -1 });
 
+productSchema.index({
+  name: 'text',
+  desciption: 'text',
+  category: 'text'
+});
+
+productSchema.statics.updateAverageRating = async function (productId) {
+  const Review = mongoose.model('Reviews');
+
+  const stats = await Review.aggregate([
+    { $match: { productId }},
+    {
+      $group: {
+        _id: '$productId',
+        avgRating: { $avg: '$rating' },
+        totalReviews: { $sum: 1 }
+      }
+    }
+  ]);
+
+  await this.findByIdAndUpdate(productId, {
+    averageRating: stats.length ? stats[0].avgRating : 0,
+    totalReviews: stats.length ? stats[0].totalReviews : 0
+  });
+};
+
 module.exports = mongoose.model('Product', productSchema);

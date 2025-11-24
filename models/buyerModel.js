@@ -7,7 +7,7 @@ const buyerProfileSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  fullName: { type: String, required: true },
+  username: { type: String, required: true },
   phone: { type: Number, required: true },
   address: { type: String, required: true },
   avatar: { type: String },
