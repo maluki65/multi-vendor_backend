@@ -1,5 +1,7 @@
 const Products = require('../models/productModel');
 const Reviews = require('../models/reviewsModel');
+const Orders = require('../models/orderModel');
+const mongoose = require('mongoose');
 const VendorProfiles = require('../models/vendorProfileModel');
 const createError = require('../utils/appError');
 const imageKit = require('../config/imgKit');
@@ -187,3 +189,62 @@ exports.updateProductQuantity = async (productId, quantityOrdered) => {
     console.log(`Low stock alert for product: ${product.name} (Qty: ${product.quantity})`);
   }
 }
+
+// On smart recommendation with trending and top-rated products
+exports.getSmartRecomendations = async (req, res, next) => {
+  try{
+    const { productId } = req.params;
+    const { vendorId, page = 1, limit = 10, period = 'week' } = req.query;
+
+    const skip = (page - 1)* limit;
+    
+
+    // On getting top-rated products
+    const topRated = await Products.find( vendorId ? { status: 'active', vendorId } : { status: 'active'})
+    .sort({ averageRating: -1, totalReviews: -1 })
+    .skip(skip)
+    .limit(10);
+
+    // On getting trending products based on orders
+    let startDate = new Date();
+    if (period === 'today') startDate.setHours(0, 0, 0, 0);
+    else startDate.setDate(startDate.getDate() - 7);
+
+    const trending = await Orders.aggregate([
+      { $match: { createdAt: { $gte: startDate }}},
+      { $unwind: '$products' },
+      { $group: { _id: '$products.productId', orders: { $sum: 1 }}},
+      { $sort: { orders: -1 }},
+      { $limit: 10 },
+      { $lookup: {from: 'products', localField: '_id', foreignField: '_id', as: 'product'}},
+      { $unwind: '$product'}
+    ]);
+
+    // On customer also bought
+    let alsoBought = [];
+    if (productId) {
+      alsoBought = await Orders.aggregate([
+        { $match: { 'products.productId': mongoose.Types.ObjectId(productId)}},
+        { $unwind: '$products'},
+        { $match: { 'products.productId': { $ne: mongoose.Types.ObjectId(productId)}}},
+        { $group: { _id: '$products.productId', count: {$sum: 1}}},
+        { $sort: { count: -1 }},
+        { $limit: 10 },
+        { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product'}},
+        { $unwind: '$product'}
+      ]);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      recommdations: {
+        topRated,
+        trending,
+        alsoBought
+      }
+    });
+
+  } catch(error){
+    next(error);
+  }
+};

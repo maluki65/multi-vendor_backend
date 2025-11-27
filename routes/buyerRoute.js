@@ -2,6 +2,7 @@ const express = require('express');
 const { startCheckout, cancelCheckoutSession } = require('../controllers/checkoutController');
 const { createReview, getProductReviews, updateReview, deleteReview  } = require('../controllers/reviewController');
 const { getUserInfo, updateUserSettings, getAllProducts, getProductsByVendor, getProductsByCategory, getRecommendedProducts,searchProduct } = require('../controllers/buyerController');
+const { getSmartRecomendations } = require('../controllers/productController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 
@@ -20,6 +21,8 @@ router.get('/products/category/:categoryId', protect, restrictTo('Buyer'), getPr
 router.get('/reviews/product/:productId', protect, restrictTo('Buyer'), getProductReviews);
 router.get('/products/search', protect, restrictTo('Buyer'), searchProduct);
 router.get('/products/:productId/recommeded', protect, restrictTo('Buyer'), getRecommendedProducts);
+router.get('/products/smart', protect, restrictTo('Buyer'), getSmartRecomendations);
+router.get('/products/smart/:productId', protect, restrictTo('Buyer'), getSmartRecomendations);
 
 // On PUT routes
 router.put('/settings', protect, restrictTo('Buyer'), updateUserSettings);
