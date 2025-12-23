@@ -18,7 +18,6 @@ router.get('/orders/buyer', protect, restrictTo('Buyer'), getBuyerOrders);
 
 router.get('/orders/admin/all', protect, restrictTo('Admin'), getAllOrders);
 
-router.get('/orders/buyer', protect, restrictTo('Buyer'), getBuyerOrders);
 
 router.get('/orders/buyer/cancelled', protect, restrictTo('Buyer'), getBuyerCancelledOrders);
 

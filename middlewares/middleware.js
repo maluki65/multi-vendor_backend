@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const createError = require('../utils/appError');
 
 exports.protect = (req, res, next) => {
-  const token = req.cookies.jwt;
+  const token = req.cookies.accessToken;
 
   if(!token) {
     return next(new createError('You are not logged in!', 401));
