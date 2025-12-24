@@ -3,6 +3,7 @@ const VendorProfile = require('../models/vendorProfileModel');
 const Orders = require('../models/orderModel');
 const User = require('../models/userModel');
 const createError = require('../utils/appError');
+const { assertStoreNameAvailable } = require('../services/storeName.validator');
 
 // On creating or updating vendor Profile
 exports.createUpdateVendorProfile = async (req, res, next) => {
@@ -12,26 +13,49 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
 
     const user = await User.findById(vendorId);
     if(!user) return next(new createError('User not found', 404));
+
+    if (user.role !== 'Vendor') {
+      return next(new createError('Only venors can access this profile', 403));
+    }
+
+    if (user.status !== 'approved') {
+      return next(new createError('You vendor account is pending approval', 403));
+    }
     
-    const storeName = data.storeName || user.storeName;
+    const finalStoreName = data.storeName || user.storeName;
+    let finalSlug = user.storeSlug;
+
+    if (data.storeName && data.storeName !== user.storeName){
+      finalSlug = await assertStoreNameAvailable(data.storeName, vendorId);
+
+      user.storeName = data.storeName;
+      user.storeSlug = finalSlug;
+      await user.save();
+    }
 
     const profile = await VendorProfile.findOneAndUpdate(
       { vendorId },
-      { ...data, vendorId },
+      { 
+        ...data, 
+        vendorId,
+        storeName: finalStoreName,
+        storeSlug: finalSlug
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true }  // if doc doesn't exist create it
     );
 
-    // On keeping the storeName in sync with user model
+    /*// On keeping the storeName in sync with user model
     if (data.storeName && data.storeName !== user.storeName){
       user.storeName = data.storeName;
       await user.save();
-    }
+    }*/
 
     res.status(200).json({
       status: 'success',
       message: 'Vendor profile saved successfully.',
       profile,
-      storeName,
+      storeName: finalStoreName,
+      slug: finalSlug
     });
   } catch (error) {
     next(error);
@@ -42,7 +66,14 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
 exports.getVendorProfile = async(req, res, next) => {
   try {
     const { id } = req.params;
-    const profile = await VendorProfile.findOne({ vendorId: id }).populate('vendorId', 'storeName email');
+    const profile = await VendorProfile 
+      .findOne({ 
+        $or: [
+          { vendorId: id },
+          { storeSlug: id }
+        ]
+      })
+      .populate('vendorId', 'storeName storeSlug email');
 
     if (!profile) return next(new createError('Vendor profile not found', 404));
 

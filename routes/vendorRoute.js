@@ -19,7 +19,7 @@ router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (r
 
     res.status(200).json({
       status: 'success',
-      message: 'Your re-approval has been sunmitted. Please wait for admin review.', vendor,
+      message: 'Your re-approval has been submitted. Please wait for admin review.', vendor,
     });
   } catch (error) {
     next(error);
@@ -36,7 +36,7 @@ router.get('/vendor/:id/stats', protect, restrictTo('Vendor'), getVendorStats);
 router.get('/vendor/:id/profile', protect, restrictTo('Vendor'), getVendorOrders);
 
 // On creating a public route
-router.get('/:id/vendor/profile', protect, getVendorProfile);
+router.get('/:id/vendor/profile', getVendorProfile);
 
 // On Vendor products 
 router.post('/vendor/product', protect, restrictTo('Vendor'), createProduct);
