@@ -11,6 +11,7 @@ const BuyerRoutes = require('./routes/buyerRoute.js');
 const CartRoutes = require('./routes/cartRoute.js');
 const OrderRoutes = require('./routes/orderRoute.js');
 const globalErrorHandler = require('./middlewares/errorController.js');
+const ImgKitAuth = require('./utils/imagekitAuth.js');
 
 const app = express();
 app.use(express.json());
@@ -35,6 +36,8 @@ app.use('/v1/api/buyer', BuyerRoutes);
 app.use('/v1/api/vendor', VendorRoutes);
 app.use('/v1/api/cart', CartRoutes);
 app.use('/v1/api/orders', OrderRoutes);
+app.use('/v1/api/imgAuth', ImgKitAuth);
+
 
 
 app.use(globalErrorHandler);

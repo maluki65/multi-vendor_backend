@@ -35,20 +35,27 @@ const createSendToken = (user, statusCode, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };*/
 
+  res.cookie('csrfToken', csrfToken, {
+    httpOnly: true, //true,
+    secure: /*true,*/    process.env.NODE_ENV === 'production',
+    sameSite: 'lax', //lax,
+    maxAge: 15 * 60 * 1000,
+  });
+
   // On access token cookie (short-lived)
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure:/*false,*/    process.env.NODE_ENV === 'production',
+    sameSite: 'lax', //lax,
     maxAge: 15 * 60 * 1000,
   });
 
   // On refresh token cookie (long-lived)
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    secure: /*false,*/   process.env.NODE_ENV === 'production',
+    sameSite: 'lax', //lax
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   /*res.cookie('jwt', token, cookieOptions);
@@ -74,41 +81,36 @@ const createSendToken = (user, statusCode, res) => {
 
 // On registering new user
 exports.signup = async (req, res, next) => {
-  const { username, email, password, role } = req.body;
+  const { storeName, username, email, password, role } = req.body;
 
-  if (!username|| !email || !password || !role ) return res.status(400).json({
-    message: 'All fiels are required!'
-  })
+  if ( !email || !password || !role ) {
+    return res.status(400).json({
+      message: 'All fiels are required!'
+    });
+  }
 
   try {
-    const userExists = await User.findOne({
-      email: req.body.email
-    });
+    const userExists = await User.findOne({ email });
     if(userExists) {
       return next(new createError('User with email already exists!', 400));
     }
 
-    if(!req.body.email) {
-      return next( new createError('Email is required!', 400));
-    }
-
     // On preventing user from registering as admin directly
-    let assignedRole = role;
-    if (role === 'Admin') {
-      assignedRole = 'Buyer'
-    }
+    const forbiddenRoles = 'Admin';
+    const assignedRole = forbiddenRoles.includes(role) ? 'Buyer' : role;
 
-    // Force 'pendin'status for vendors
-    const userRole = role = 'Vendor' ? 'Vendor' : 'Buyer';
-    const userStatus = role === 'Vendor' ? 'pending' : 'approved';
+    // On forcing 'pending' status for vendors
+    const status = assignedRole === 'Vendor' ? 'pending' : 'approved';
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const newUser = await User.create({
-      ...req.body,
+      username,
+      email,
+      storeName,
       password: hashedPassword,
-      role: userRole,
-      status: userStatus,
+      role: assignedRole,
+      status,
     });
 
     createSendToken(newUser, 201, res);
@@ -157,8 +159,9 @@ exports.login =  async(req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({email}).select('+password');
-    if(!user) return next(new createError("User doesn't exist!", 404));
+    const user = await User.findOne({email}).select('+password +refreshTokenHash');
+
+    if(!user) return next(new createError("Invalid password or email", 401));
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -170,7 +173,7 @@ exports.login =  async(req, res, next) => {
       if (user.status === 'pending') {
         return res.status(403).json({
           status: 'error',
-          message: 'Your vendor account is still under review.please wait for admin approval.'
+          message: 'Your vendor account is still under review please wait for admin approval.'
         });
       }
 
@@ -191,74 +194,88 @@ exports.login =  async(req, res, next) => {
 // On refresh token
 exports.refreshToken = async (req, res, next) => {
   try {
-    const refreshToken = req.cookie.refreshToken;
-    if(!refreshToken) {
-      return next(new createError('No refresh token', 401));
-    }
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) return next(new createError('No refresh token', 401));
 
-    // On verifying refresh token
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET || 'refreshsecret123'
+      process.env.JWT_REFRESH_SECRET
     );
 
-    if (decoded.type !== 'refresh') {
-      return next(new createError('Invalid token type', 403));
+    const user = await User.findById(decoded.id)
+      .select('+refreshTokenHash +passwordChangedAt');
+
+    if (!user) return next(new createError('User not found', 404));
+
+    // On rejecting tokens issued pre-password-change
+    if (user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt) {
+      return next(new createError('Session expired — login again', 401));
     }
 
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return next(new createError('User not found', 404));
+    // On applying vendor moderation  here too
+    if (user.role === 'Vendor' && user.status !== 'approved') {
+      return next(new createError('Account not approved', 403));
     }
 
-    // On rotating tokens
+    // On validating stored refresh token hash
+    const incomingHash = User.hashToken(refreshToken);
+    if (incomingHash !== user.refreshTokenHash) {
+      return next(new createError('Invalid refresh token', 401));
+    }
+
+    // On rotating new tokens
     const newAccessToken = signAccessToken(user._id);
     const newRefreshToken = signRefreshToken(user._id);
-    const newCsrfToken = crypto.randomBytes(32).toString('hex');
+
+    user.refreshTokenHash = User.hashToken(newRefreshToken);
+    await user.save();
 
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 15 * 60 * 1000,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000
     });
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 *  1000,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    res.status(200).json({
-      status: 'success',
-      csrfToken: newCsrfToken,
-    });
-  } catch (error) {
-    return next(new createError('Refresh token expired or invalid', 401));
+    res.status(200).json({ status: 'success' });
+
+  } catch (err) {
+    next(new createError('Refresh token invalid or expired', 401));
   }
 };
 
+
 // On logging out
-exports.logOut = (req, res) => {
-  res.clearCookie('accessToken', {
-    httpOnly: true,
-    secure: true, //process.env.NODE_ENV === 'production',
-    sameSite:'none',
-  });
+exports.logOut = async(req, res) => {
+  if (req.user?.id) {
+    await User.findByIdAndUpdate(req.user.id, { refreshTokenHash: null });
+  }
 
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: true,
-    sameSite:'none',
-  });
+  res.clearCookie('accessToken');
+  res.clearCookie('refreshToken');
+  res.clearCookie('csrfToken');
 
-  res.status(200).json({ status: 'success' });
+  res.status(200).json({
+    message: 'Logged out successfully'
+  });
 };
 
 // On creating session
 exports.getProfile = async(req, res, next) => {
   try{
+    if (!req.user) {
+      return res.status(401).json({
+        message: 'Not logged In!'
+      });
+    }
+
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return next(new createError('User not found', 404));
@@ -267,6 +284,7 @@ exports.getProfile = async(req, res, next) => {
     res.status(200).json({
       status: 'Success',
       user,
+      csrfToken: req.cookies.csrfToken
     });
   } catch (error) {
     next(error);

@@ -8,7 +8,7 @@ const router = express.Router();
 //On auth routes
 router.post('/auth/signup', authController.signup);
 router.post('/auth/login', authController.login);
-router.post('/auth/refresh', authController.refreshToken);
+router.post('/auth/refresh', protect, authController.refreshToken);
 router.post('/auth/logout', authController.logOut);
 
 router.get('/auth/profile', protect, authController.getProfile);
@@ -16,7 +16,7 @@ router.get('/auth/csrf-token', (req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
 
   res.cookie('csrfToken', csrfToken, {
-    hettpOnly: false,
+    httpOnly: false,
 
     secure: true, //process.env.NODE_ENV === 'production',
     sameSite: 'none',
