@@ -30,7 +30,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use('/v1/api/user', UserRoutes);
+app.use('/v1/api/users', UserRoutes);
 app.use('/v1/api/admin', AdminRoutes);
 app.use('/v1/api/buyer', BuyerRoutes);
 app.use('/v1/api/vendor', VendorRoutes);
