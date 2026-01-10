@@ -18,7 +18,7 @@ router.get('/auth/csrf-token', (req, res) => {
   res.cookie('csrfToken', csrfToken, {
     httpOnly: false,
 
-    secure: true, //process.env.NODE_ENV === 'production',
+    secure: false, //process.env.NODE_ENV === 'production',
     sameSite: 'none',
   });
 

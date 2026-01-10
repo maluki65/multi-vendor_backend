@@ -37,7 +37,7 @@ const createSendToken = (user, statusCode, res) => {
 
   res.cookie('csrfToken', csrfToken, {
     httpOnly: true, //true,
-    secure: /*true,*/    process.env.NODE_ENV === 'production',
+    secure: false,   // process.env.NODE_ENV === 'production',
     sameSite: 'lax', //lax,
     maxAge: 15 * 60 * 1000,
   });
@@ -45,7 +45,7 @@ const createSendToken = (user, statusCode, res) => {
   // On access token cookie (short-lived)
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure:/*false,*/    process.env.NODE_ENV === 'production',
+    secure:false,    //process.env.NODE_ENV === 'production',
     sameSite: 'lax', //lax,
     maxAge: 15 * 60 * 1000,
   });
@@ -53,7 +53,7 @@ const createSendToken = (user, statusCode, res) => {
   // On refresh token cookie (long-lived)
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: /*false,*/   process.env.NODE_ENV === 'production',
+    secure: false,   //process.env.NODE_ENV === 'production',
     sameSite: 'lax', //lax
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
@@ -232,14 +232,14 @@ exports.refreshToken = async (req, res, next) => {
 
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,  //process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 15 * 60 * 1000
     });
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,  //process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
