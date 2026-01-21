@@ -16,7 +16,8 @@ const userSchema = mongoose.Schema({
   password: { type: String, required: true, select: false },
   passwordChangedAt: { type: Date },
   refreshTokenHash: { type: String, select: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: String, default: 'OnSignUp'},
 });
 
 userSchema.index({ storeName:1, status: 1, username: 1, role:1, createdAt: -1 });

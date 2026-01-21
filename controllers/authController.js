@@ -122,6 +122,7 @@ exports.signup = async (req, res, next) => {
 //On creating admin 
 exports.admin = async (req, res, next) => {
   const { username, email, password } = req.body;
+  const userName = req.user.username;
 
   if (!username|| !email || !password  ) return res.status(400).json({
     message: 'All fiels are required!'
@@ -146,6 +147,7 @@ exports.admin = async (req, res, next) => {
       email,
       password: hashedPassword,
       role: 'Admin',
+      createdBy: userName,
     })
 
     createSendToken(newAdmin, 201, res);

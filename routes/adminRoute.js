@@ -9,7 +9,7 @@ const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = re
 const router = express.Router();
 
 // On creating admin
-router.post('/create/admin', protect, restrictTo('Admin'), authController.admin);
+router.post('/create', protect, restrictTo('Admin'), authController.admin);
 
 // On promoting user to admin
 router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next) => {
