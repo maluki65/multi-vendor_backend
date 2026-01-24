@@ -3,6 +3,7 @@ const createError = require('../utils/appError');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const generateUniqueUserId = require('../utils/generateUniqueUserId');
 
 // On creating jwt
 const signAccessToken = (id) => {
@@ -104,7 +105,10 @@ exports.signup = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    const UUID = await generateUniqueUserId(assignedRole);
+
     const newUser = await User.create({
+      UUID,
       username,
       email,
       storeName,

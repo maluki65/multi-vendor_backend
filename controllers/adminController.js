@@ -3,6 +3,46 @@ const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 const { sendMail } = require('../utils/nodemailer');
 
+const safeUser = (user) => ({
+  _id: user._id,
+  storeName: user.storeName,
+  storeSlug: user.storeSlug,
+  username: user.username,
+  date: user.createdAt,
+  status: user.status,
+  email: user.email,
+  UUID: user.UUID,
+  role: user.role,
+})
+// on getting all users
+exports.getAllUsers = async(req, res, next) => {
+  try { 
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await User.countDocuments();
+
+    const users = await User.find()
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .select('-password');
+
+    res.status(200).json({
+      status: 'success',
+      page,
+      pages: Math.ceil(total / limit),
+      total,
+      count: users.length,
+      data: users.map(safeUser),
+    });
+  } catch(error) {
+    next(error);
+    console.error('Failded to fetch users:', error);
+  }
+};
+
 // On getting all vendors with pending status
 exports.getPendingVendors = async (req, res, next) => {
   try{

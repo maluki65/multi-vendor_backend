@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getPendingVendors, approveVendor, rejectVendor, getAllCancelledOrders } = require('../controllers/adminController');
+const { getAllUsers, getPendingVendors, approveVendor, rejectVendor, getAllCancelledOrders } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -32,14 +32,17 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
   }
 });
 
+// On getting all users
+router.get('/users', protect, restrictTo('Admin'), getAllUsers);
+
 // On getting all vendors with status pending
-router.get('/vendor/pending', protect, restrictTo('Admin', getPendingVendors));
+router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
 
 // On approving vendor
-router.patch('/vendor/approve', protect, restrictTo('Admin', approveVendor));
+router.patch('/vendor/approve', protect, restrictTo('Admin'), approveVendor);
 
 // On rejecting vendor
-router.patch('/vendor/reject', protect, restrictTo('Admin', rejectVendor));
+router.patch('/vendor/reject', protect, restrictTo('Admin'), rejectVendor);
 
 // On admin commissions
 router.get('/vendor/commissions/all', protect, restrictTo('Admin'), getAllCommissions);
