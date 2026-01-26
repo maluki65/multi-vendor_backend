@@ -146,9 +146,15 @@ exports.admin = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(req.body.password, 12);
 
+    const assignedRole = 'Admin';
+    
+    const UUID = await generateUniqueUserId(assignedRole);
+
     const newAdmin = await User.create({
+      UUID,
       username,
       email,
+      status: 'approved',
       password: hashedPassword,
       role: 'Admin',
       createdBy: userName,

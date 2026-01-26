@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getAllUsers, getPendingVendors, approveVendor, rejectVendor, getAllCancelledOrders } = require('../controllers/adminController');
+const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -24,7 +24,7 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
 
     res.status(200).json({
       status: 'success',
-      message: `${user.username} has been promotet to Admin`,
+      message: `${user.username} has been promoted to Admin`,
       user,
     });
   } catch (error) {
@@ -37,6 +37,9 @@ router.get('/users', protect, restrictTo('Admin'), getAllUsers);
 
 // On getting all vendors with status pending
 router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
+
+// On searching users
+router.get('/search', protect, restrictTo('Admin'), searchUsers);
 
 // On approving vendor
 router.patch('/vendor/approve', protect, restrictTo('Admin'), approveVendor);
@@ -51,6 +54,9 @@ router.get('/vendor/commissions/:vendorId', protect, restrictTo('Admin'), getCom
 
 router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAdminCommission);
 
-router.get('/admin/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
+router.get('/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
+
+
+router.delete('/delete/user/:userId', protect, restrictTo('Admin'), deleteUser);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
+//const Profile = require('../models/UserProfile');
 const { sendMail } = require('../utils/nodemailer');
 
 const safeUser = (user) => ({
@@ -14,7 +15,7 @@ const safeUser = (user) => ({
   UUID: user.UUID,
   role: user.role,
 })
-// on getting all users
+// On getting all users
 exports.getAllUsers = async(req, res, next) => {
   try { 
     const page = Number(req.query.page) || 1;
@@ -40,6 +41,50 @@ exports.getAllUsers = async(req, res, next) => {
   } catch(error) {
     next(error);
     console.error('Failded to fetch users:', error);
+  }
+};
+
+// On searching users
+exports.searchUsers = async(req, res, next) => {
+  try{
+    let { 
+      search = '',
+      page = 1,
+      limit = 10
+    } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    // on building search query
+    const query = {
+      $or: [
+        { username: { $regex: search, $options: 'i' } },
+        { storeName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ],
+    };
+
+    if (req.user?.id) {
+      query._id = { $ne: req.user._id };
+    }
+
+    const total = await User.countDocuments(query);
+
+    const users = await User.find(query)
+     .skip((page - 1) * limit)
+     .limit(limit)
+     .sort({ username: 1 });
+
+     res.status(200).json({
+      status: 'success',
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: users,
+     });
+  } catch(error){
+    console.error('Error searching user:', error);
+    next(createError(500, error.message));
   }
 };
 
@@ -145,6 +190,26 @@ exports.getAllCancelledOrders = async (req, res, next) => {
     });
 
   } catch(error){
+    next(error);
+  }
+};
+
+// On deleting a user
+exports.deleteUser = async(req, res, next) => {
+  try{
+    const { userId } = req.params;
+    const user = await User.findByIdAndDelete(userId);
+    if(!user) return next (new createError('User not found!', 404));
+
+    //await Profile.findOneAndDelete({ userId });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'User deleted',
+      deletedUserId: userId,
+    });
+  } catch (error) {
+    console.error('Failed to delete user:', error);
     next(error);
   }
 };
