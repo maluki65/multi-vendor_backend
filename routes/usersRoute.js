@@ -12,6 +12,8 @@ router.post('/auth/refresh', protect, authController.refreshToken);
 router.post('/auth/logout', authController.logOut);
 
 router.get('/auth/profile', protect, authController.getProfile);
+router.get('/auth/me', protect, authController.getMe);
+
 router.get('/auth/csrf-token', (req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
 

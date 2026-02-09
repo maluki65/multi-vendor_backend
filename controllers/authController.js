@@ -279,6 +279,38 @@ exports.logOut = async(req, res) => {
   });
 };
 
+// On getting logged-In user
+exports.getMe = async(req, res, next) => {
+  try {
+    let query = User.findById(req.user.id);
+
+    // on role-based populate
+    if(req.user.role === 'Vendor'){
+      query = query.populate('vendorProfile');
+    }
+
+    if(req.user.role === 'Buyer'){
+      query = query.populate('buyerProfile');
+    }
+
+    const user = await query;
+
+    if(!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+    });
+  } catch(error){
+    next(error);
+  }
+};
+
 // On creating session
 exports.getProfile = async(req, res, next) => {
   try{

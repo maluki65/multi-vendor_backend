@@ -7,20 +7,22 @@ const APIFeatures = require('../utils/APIFeatures');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
-  try{
-    const userId = req.user.id;
+  try {
+    const user = await User.findById(req.user.id)
+    .select('-password')
+    .populate('buyerProfile')
+    .populate('vendorProfile');
 
-    const user = await User.findById(userId).select('-password');
-    if (!user) return next(new createError('User not found', 404));
-
-    const profile = await BuyerProfile.findOne({ buyerId: userId });
+    if(!user) return next(new createError('User not found', 404));
 
     res.status(200).json({
       status: 'success',
       user,
-      profile,
+      profile:
+      user.role === 'Buyer'
+       ? user.buyerProfile
+       : user.vendorProfile,
     });
-
   } catch (error){
     next(error);
   }
@@ -160,7 +162,7 @@ exports.getBuyerCancelledOrders = async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
-      results: order.length,
+      results: orders.length,
       orders
     });
 

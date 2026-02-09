@@ -48,4 +48,23 @@ userSchema.statics.hashToken = function(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
+// On virtual profiles
+userSchema.virtual('buyerProfile', {
+  ref: 'BuyerProfile',
+  localField: '_id',
+  foreignField: 'buyerId',
+  justOne: true,
+});
+
+userSchema.virtual('vendorProfile', {
+  ref: 'VendorProfile',
+  localField: '_id',
+  foreignField: 'vendorId',
+  justOne: true,
+});
+
+// On enabling virtuals in JSON
+userSchema.set('toJSON',  { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
 module.exports = mongoose.model('Users', userSchema);

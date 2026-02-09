@@ -14,7 +14,7 @@ router.post('/create', protect, restrictTo('Admin'), authController.admin);
 // On promoting user to admin
 router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { role: 'Admin'},
+    const user = await User.findByIdAndUpdate(req.params.id, { role: 'Admin', status: 'approved'},
     {new: true, runValidators: true }
     ).select('-password');
 

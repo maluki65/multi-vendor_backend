@@ -15,21 +15,18 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
     if(!user) return next(new createError('User not found', 404));
 
     if (user.role !== 'Vendor') {
-      return next(new createError('Only venors can access this profile', 403));
+      return next(new createError('Only vendors can access this profile', 403));
     }
 
     if (user.status !== 'approved') {
       return next(new createError('You vendor account is pending approval', 403));
     }
     
-    const finalStoreName = data.storeName || user.storeName;
-    let finalSlug = user.storeSlug;
-
-    if (data.storeName && data.storeName !== user.storeName){
-      finalSlug = await assertStoreNameAvailable(data.storeName, vendorId);
-
+    // on handling store name chanhe safely
+    if (data.storeName && data.storeName !== user.storeName) {
+      const slug = await assertStoreNameAvailable(data.storeName, vendorId);
       user.storeName = data.storeName;
-      user.storeSlug = finalSlug;
+      user.storeSlug = slug;
       await user.save();
     }
 
@@ -37,11 +34,11 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
       { vendorId },
       { 
         ...data, 
+        storeName: user.storeName,
+        storeSlug: user.storeSlug,
         vendorId,
-        storeName: finalStoreName,
-        storeSlug: finalSlug
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }  // if doc doesn't exist create it
+      { upsert: true, new: true/*, setDefaultsOnInsert: true*/ }  // if doc doesn't exist create it
     );
 
     /*// On keeping the storeName in sync with user model
@@ -53,9 +50,7 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       message: 'Vendor profile saved successfully.',
-      profile,
-      storeName: finalStoreName,
-      slug: finalSlug
+      profile
     });
   } catch (error) {
     next(error);
@@ -65,21 +60,22 @@ exports.createUpdateVendorProfile = async (req, res, next) => {
 // On getting vendor profile (Public)
 exports.getVendorProfile = async(req, res, next) => {
   try {
-    const { id } = req.params;
-    const profile = await VendorProfile 
-      .findOne({ 
-        $or: [
-          { vendorId: id },
-          { storeSlug: id }
-        ]
-      })
-      .populate('vendorId', 'storeName storeSlug email');
+    const vendor = await User.findOne({
+      $or: [
+        { _id: req.params.id },
+        { storeSlug: req.params.id }
+      ],
+      role: 'Vendor',
+      status: 'approved',
+    })
+     .select('storeName storeSlug')
+     .populate('vendorProfile');
 
-    if (!profile) return next(new createError('Vendor profile not found', 404));
+    if (!vendor) return next(new createError('Vendor not found', 404));
 
     res.status(200).json({
       status: 'success',
-      profile,
+      vendor,
     });
   } catch (error) {
     next(error);
@@ -134,12 +130,9 @@ exports.getVendorOrders = async (req, res, next ) => {
 exports.getVendorCancelledOrders = async(req, res, next) => {
   try{
     const vendorId = req.user.id;
-
-    const vendorProfile = await VendorProfile.findOne({ vendorId });
-    if(!vendorProfile) return next(new createError('Vendor not found', 404));
-
+    
     const orders = await Orders.find({
-      vendorId: vendorProfile._id,
+      vendorId,
       orderStatus: 'cancelled'
     })
     .populate('buyerId', 'username email')
