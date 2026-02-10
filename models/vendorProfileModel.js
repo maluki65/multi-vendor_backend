@@ -10,15 +10,48 @@ const vendorProfileSchema = new mongoose.Schema({
     index: true,
   },
 
-  storeName: { type: String, required: true, index: true },
-  storeSlug: { type: String, unique: true, index: true },
+  businessInfo: {
+    legalName: String,
+    registrationNumber: String,
+    taxId: String
+  },
 
-  description: { type: String },
-  logo: { type: String },
-  banner: { type: String },
-  contactEmail: { type: String },
-  phone: { type: String },
-  address: { type: String },
+  store: {
+    storeName: { type: String, required: true, index: true },
+    storeSlug: { type: String, unique: true, index: true },
+    description: String,
+    logo: String,
+    banner: String,
+    contactEmail: String,
+    contactPhone: String,
+    address: {
+      country: String,
+      city: String,
+      Street: String
+    }
+  },
+
+  payout: {
+    method: { type: String, enum: ['Bank', 'mobile_money', /*'Crypto'*/] },
+    accountName: String,
+    accountNumber: String,
+    provider: String,
+    paybill: String,
+    paybillAcc: String,
+    tillNumber: String,
+    pochiLaBiashara: String,
+  },
+
+  metrics: {
+    productsCount: { type: Number, default: 0 },
+    orderCount: { type: Number, default: 0 },
+    rating: { type: Number, default: 0 }
+  },
+
+  verification: {
+    isverified: { type: Boolean, default: false },
+    verified: Date
+  },
 
   socialLinks: {
     instagram: String,
@@ -28,7 +61,7 @@ const vendorProfileSchema = new mongoose.Schema({
   },
 
   createdAt: { type: Date, default: Date.now },
-});
+}, { timestamps: true });
 
 vendorProfileSchema.index({ vendorId:1, storeName: 1, createdAt: -1 });
 

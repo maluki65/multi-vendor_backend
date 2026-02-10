@@ -28,15 +28,155 @@ exports.getUserInfo = async (req, res, next) => {
   }
 };
 
+// On getting Buyer profile
+exports.getBuyerProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId)
+    .select('-password')
+    .populate('buyerProfile');
+
+    if(!user) {
+      return next(new createError('User not found', 404));
+    }
+
+    if (user.role !== 'Buyer') {
+      return next(new createError('Only buyers can access this profile', 403));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+      profile: user.buyerProfile || null,
+    });
+  } catch(error){
+    console.error('Error getting buyer profile!', error);
+    next(error);
+  }
+};
+
+// On creating buyer profile
+exports.createBuyerProfile = async(req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { phone, address, avatar, avatarId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return next(new createError('User not found!', 404));
+
+    if (user.role !== 'Buyer') {
+      return next(new createError('Only buyers can create this profile', 403));
+    }
+
+    const existingProfile = await BuyerProfile.findOne({ buyerId: userId });
+    if (existingProfile) {
+      return next(new createError('Buyer profile already exists', 400));
+    }
+
+    const profile = await BuyerProfile.create({
+      buyerId: userId,
+      phone,
+      address,
+      avatar,
+      avatarId,
+    });
+
+    user.buyerProfile = profile._id;
+    await user.save();
+
+    res.status(201).json({
+      status: 'success',
+      profile,
+    }) 
+  } catch(error){
+    console.error('Failed to add profile!', error);
+    next(error);
+  }
+};
+
+// On updating user profile
+exports.updateBuyerProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { email, phone, address, username, storeName } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return next(new createError('User not found', 404));
+
+    const updateData = { email }; 
+
+    if (user.role === 'Buyer' && username) {
+      updateData.username = username;
+    }
+
+    if (user.role === 'Vendor' && storeName) {
+      updateData.storeName = storeName; 
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    
+    const profile = await BuyerProfile.findOneAndUpdate(
+      { buyerId: userId },
+      { phone, address },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      user: updatedUser,
+      profile, 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// On updating avatar
+exports.updateBuyerAvatar = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { avatar, avatarId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return next(new createError('User not found', 404));
+
+    if (user.role !== 'Buyer') {
+      return next(new createError('Only buyers can update avatar', 403));
+    }
+
+    const profile = await BuyerProfile.findOneAndUpdate(
+      { buyerId: userId },
+      { avatar, avatarId },
+      { new: true }
+    );
+
+    if (!profile) {
+      return next(new createError('Buyer profile not found', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      profile,
+    });
+  } catch(error){
+    console.error('Failed to update avatar!', error);
+    next(error);
+  }
+};
 // On updating user settings
 exports.updateUserSettings = async (req, res, next) => {
   try{
     const userId = req.user.id;
-    const { email, username, phone, address, avatar, avatarId } = req.body;
+    const { email, fullname, phone, /*address,*/ avatar, avatarId } = req.body;
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { email, username },
+      { email , fullname },
       { new: true, runValidators: true }
     );
 
@@ -45,7 +185,7 @@ exports.updateUserSettings = async (req, res, next) => {
     // On updating or  creating buyer profile
     const profile = await BuyerProfile.findOneAndUpdate(
       { buyerId: userId },
-      { phone, address, avatar, avatarId },
+      { phone, /*address,*/ avatar, avatarId },
       { new: true, upsert: true }
     );
 
@@ -56,6 +196,7 @@ exports.updateUserSettings = async (req, res, next) => {
     });
 
   } catch(error){
+    console.error('Error updating/creating buyer profile!', error);
     next(error);
   }
 };
