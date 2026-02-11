@@ -8,7 +8,8 @@ const buyerProfileSchema = new mongoose.Schema({
     index: true,
   },
   fullname: { type: String, required: true },
-  phone: { type: Number, required: true },
+  phone: { type: String, required: true },
+  gender: { type: String, required: true },
   addresses: [
     {
       label: String,
@@ -16,12 +17,12 @@ const buyerProfileSchema = new mongoose.Schema({
       city: String,
       street: String,
       postalCode: String,
-      isDefault:Boolean
+      //isDefault:Boolean
     }
   ],
   preferences: {
     currency: String,
-    language: String,
+    //language: String,
     notification: {
       email: Boolean,
       sms: Boolean,
@@ -32,8 +33,8 @@ const buyerProfileSchema = new mongoose.Schema({
     orderCount: { type: Number, default: 0 },
     totalSpent: { type: Number, default: 0 },
   },
-  avatar: { type: String },
-  avatarId:{type: String },
+  avatar: { type: String, default: 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_wordcount_boost&w=740&q=80' },
+  avatarId:{type: String, default: 'none09763' },
   //createdAt: {type: Date, default: Date.now },
 }
 , {timestamps: true });

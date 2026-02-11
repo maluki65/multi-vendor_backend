@@ -60,7 +60,7 @@ exports.getBuyerProfile = async (req, res, next) => {
 exports.createBuyerProfile = async(req, res, next) => {
   try {
     const userId = req.user.id;
-    const { phone, address, avatar, avatarId } = req.body;
+    const { fullname, phone, gender, addresses, preferences, avatar, avatarId } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return next(new createError('User not found!', 404));
@@ -76,8 +76,11 @@ exports.createBuyerProfile = async(req, res, next) => {
 
     const profile = await BuyerProfile.create({
       buyerId: userId,
+      fullname,
       phone,
-      address,
+      gender,
+      addresses,
+      preferences,
       avatar,
       avatarId,
     });
