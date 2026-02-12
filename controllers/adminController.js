@@ -169,9 +169,10 @@ exports.rejectVendor = async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
-      message: `${vendor.username}'s vendor request has been rejected.`, vendor,
+      message: `${vendor.storeName}'s vendor request has been rejected.`, vendor,
     });
   }  catch (error){
+    console.error('Vendor rejectio failed:', error);
     next(error);
   }
 };
