@@ -42,10 +42,10 @@ router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
 
 // On approving vendor
-router.patch('/vendor/approve', protect, restrictTo('Admin'), approveVendor);
+router.put('/vendor/approve/:id', protect, restrictTo('Admin'), approveVendor);
 
 // On rejecting vendor
-router.patch('/vendor/reject', protect, restrictTo('Admin'), rejectVendor);
+router.put('/vendor/reject/:id', protect, restrictTo('Admin'), rejectVendor);
 
 // On admin commissions
 router.get('/vendor/commissions/all', protect, restrictTo('Admin'), getAllCommissions);

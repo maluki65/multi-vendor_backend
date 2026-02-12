@@ -3,7 +3,7 @@ const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const { createUpdateVendorProfile, getVendorStats, getVendorOrders, getVendorProfile  } = require('../controllers/vendorController');
 const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
-const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct } = require('../controllers/productController');
+const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
 const User = require('../models/userModel');
 
 const router = express.Router();
@@ -39,7 +39,7 @@ router.get('/vendor/:id/profile', protect, restrictTo('Vendor'), getVendorOrders
 router.get('/:id/vendor/profile', getVendorProfile);
 
 // On Vendor products 
-router.post('/vendor/product', protect, restrictTo('Vendor'), createProduct);
+router.post('/vendor/product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
 
 router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
 

@@ -181,20 +181,11 @@ exports.login =  async(req, res, next) => {
     }
 
     // On handling vendor approval states
-    if (user.role === 'Vendor') {
-      if (user.status === 'pending') {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Your vendor account is still under review please wait for admin approval.'
-        });
-      }
-
-      if (user.status === 'rejected') {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Your vendor application was rejected. Please request re-approval.'
-        });
-      }
+    if (user.role === 'Vendor' && user.status === 'rejected') {
+      return res.status(403).json({
+        status: error,
+        message: 'Your vendor application was rejected. Please request re-approval'
+      });
     }
 
     createSendToken(user, 200, res);

@@ -96,12 +96,12 @@ exports.getPendingVendors = async (req, res, next) => {
       status: 'pending'
     }).select('-password');
 
-    if (!pendingVendors || pendingVendors.length === 0 ){
+    /*if (!pendingVendors || pendingVendors.length === 0 ){
       return res.status(404).json({
         status: 'Fail',
         message: 'No pending vendors found',
       });
-    }
+    }*/
 
     res.status(200).json({
       status: 'success',
@@ -126,13 +126,13 @@ exports.approveVendor = async (req, res, next) => {
 
     if (!vendor) return next(new createError('Vendor not found', 404));
 
-    // On sending approve email
+    /* On sending approve email
     await sendMail({
       email: vendor.email,
       subject: 'Vendor account approved',
       message: `<h2> Congratulations ${vendor.storeName}!</h2>
       <p>Your vendor account has been approved. You can now start listing your products on our marketplace.</p>`
-    });
+    });*/
 
     res.status(200).json({
       status: 'success',
@@ -157,7 +157,7 @@ exports.rejectVendor = async (req, res, next) => {
 
     if (!vendor) return next(new createError('Vendor not found', 404));
 
-    // On sending mail
+   /* // On sending mail
     await sendMail({
       email: vendor.email,
       subject: 'Vendor application rejected',
@@ -165,7 +165,7 @@ exports.rejectVendor = async (req, res, next) => {
       <p>We regret to inform you that your vendor application was rejected.</p>
       <p>Reason: ${vendor.rejectionReason}</p>
       <p>You may log in to your account and request re-approval after addressing the issues.</p>`
-    });
+    });*/
 
     res.status(200).json({
       status: 'success',
