@@ -4,6 +4,7 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const { createUpdateVendorProfile, getVendorStats, getVendorOrders, getVendorProfile  } = require('../controllers/vendorController');
 const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
+const { addVerificationInfo, getVerificationInfo, updateVerificationInfo } = require('../controllers/verificationController');
 const User = require('../models/userModel');
 
 const router = express.Router();
@@ -28,6 +29,7 @@ router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (r
 
 // On authenticated vendor route
 router.post('/vendor/profile', protect, restrictTo('Vendor'), createUpdateVendorProfile);
+router.post('/verification/', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
 router.patch('/vendor/profile', protect, restrictTo('Vendor'), createUpdateVendorProfile);
 
@@ -45,7 +47,10 @@ router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendor
 
 router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
+router.get('/verification/me', protect, restrictTo('Vendor'), getVerificationInfo);
+
 router.put('/vendor/product/:id', protect, restrictTo('Vendor'), updateProduct);
+router.patch('/verification/resubmit', protect, restrictTo('Vendor', 'Admin'), updateVerificationInfo);
 
 router.delete('/vendor/product/:id', protect, restrictTo('Vendor'), deleteProduct);
 

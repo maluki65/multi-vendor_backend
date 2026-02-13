@@ -5,11 +5,14 @@ const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
 const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = require('../controllers/commissionController');
+const { addVerificationInfo, getVerificationInfo } = require('../controllers/verificationController');
+
 
 const router = express.Router();
 
 // On creating admin
 router.post('/create', protect, restrictTo('Admin'), authController.admin);
+router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
 // On promoting user to admin
 router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next) => {
@@ -40,6 +43,8 @@ router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
 
 // On searching users
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
+router.get('/verification/all', protect, restrictTo('Admin'), getVerificationInfo);
+
 
 // On approving vendor
 router.put('/vendor/approve/:id', protect, restrictTo('Admin'), approveVendor);

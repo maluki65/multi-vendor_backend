@@ -21,6 +21,7 @@ const vendorProfileSchema = new mongoose.Schema({
     storeSlug: { type: String, unique: true, index: true },
     description: String,
     logo: String,
+    logoId: String,
     banner: String,
     contactEmail: String,
     contactPhone: String,
