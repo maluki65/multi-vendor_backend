@@ -9,31 +9,17 @@ const verificationSchema = new mongoose.Schema({
     index: true,
   },
 
-  verificationImg: { 
-    type: [ String ], 
-    required: true, 
-    index: true,
-    trim: true,
-    validate: {
-      validator: (v) => Array.isArray(v) && v.length > 0,
-      message: 'At least one verification image is required'
-    }
-  },
+  verificationFiles:[
+    {
+      url: { type: String, required: true },
+      fileId: { type: String, required: true },
+    },
+  ],
 
-  verificationImgIds: {
-    type: [ String ],
-    required: true,
-    trim: true,
-    index: true,
-    validate: {
-      validator: (v) => Array.isArray(v) && v.length > 0,
-      message: 'At leat one verification Id is required'
-    }
-  },
-
+  signature: { type: String, required: true, index: true },
   termsConditions: { type: Boolean, required: true },    
 }, { timestamps: true });
 
-verificationSchema.index({ verificationId: 1, verificationImg: 1, verificationImgIds: 1, createdAt: -1 });
+verificationSchema.index({ verificationId: 1, signature: 1, createdAt: -1 });
 
 module.exports = mongoose.model('verificationDocs', verificationSchema);

@@ -6,12 +6,12 @@ exports.addVerificationInfo = async(req, res, next) => {
   try {
     const userId = req.user.id;
     
-    const { verificationImg, verificationImgIds, termsConditions } = req.body;
+    const { verificationFiles,  signature, termsConditions } = req.body;
 
     if (
-        !Array.isArray(verificationImg) || verificationImg.length === 0 ||
-        !Array.isArray(verificationImgIds) || verificationImgIds.length === 0 ||
-        termsConditions !== true
+        !Array.isArray(verificationFiles) || verificationFiles.length === 0 ||
+        termsConditions !== true 
+        || !signature
       ) {
       return next(new createError('Missing or invalid required fields!', 400));
     }
@@ -30,8 +30,8 @@ exports.addVerificationInfo = async(req, res, next) => {
 
     const verify = await Verification.create({
       verificationId: userId,
-      verificationImg,
-      verificationImgIds,
+      verificationFiles,
+      signature,
       termsConditions,
     });
 
