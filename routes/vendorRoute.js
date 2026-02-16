@@ -47,7 +47,7 @@ router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendor
 
 router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
-router.get('/verification/me', protect, restrictTo('Vendor'), getVerificationInfo);
+router.get('/verification/me', protect, restrictTo('Vendor', 'Admin'), getVerificationInfo);
 
 router.put('/vendor/product/:id', protect, restrictTo('Vendor'), updateProduct);
 router.patch('/verification/resubmit', protect, restrictTo('Vendor', 'Admin'), updateVerificationInfo);

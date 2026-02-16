@@ -87,6 +87,28 @@ exports.getVerificationInfo = async(req, res, next) => {
   }
 };
 
+exports.getVerificationByUserId = async(req, res, next) => {
+  try{    
+    if (req.user.role !== 'Admin') return next(new createError('Access denied', 403));
+
+    const { id } = req.params;
+    
+    const verification = await Verification.findOne({ verificationId: id });
+    if (!verification) return res.status(404).json({
+      status:'Fail',
+      message: 'No verification found for this user'
+    });
+
+    res.status(200).json({
+      status: 'success',
+      verification
+    });
+  } catch(error) {
+    console.error('Failed to fetch vendor verification', error);
+    next(error);
+  }
+};
+
 exports.updateVerificationInfo = async(req, res, next) => {
   try{
     const userId = req.user.id;

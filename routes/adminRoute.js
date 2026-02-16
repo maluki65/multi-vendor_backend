@@ -5,7 +5,7 @@ const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
 const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = require('../controllers/commissionController');
-const { addVerificationInfo, getVerificationInfo } = require('../controllers/verificationController');
+const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = require('../controllers/verificationController');
 
 
 const router = express.Router();
@@ -44,6 +44,7 @@ router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
 // On searching users
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
 router.get('/verification/all', protect, restrictTo('Admin'), getVerificationInfo);
+router.get('/verification/:id', protect, restrictTo('Admin'), getVerificationByUserId);
 
 
 // On approving vendor
