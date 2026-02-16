@@ -92,11 +92,11 @@ exports.getVerificationByUserId = async(req, res, next) => {
     if (req.user.role !== 'Admin') return next(new createError('Access denied', 403));
 
     const { id } = req.params;
-    
+
     const verification = await Verification.findOne({ verificationId: id });
-    if (!verification) return res.status(404).json({
-      status:'Fail',
-      message: 'No verification found for this user'
+    if (!verification) return res.status(200).json({
+      status:'success',
+      verification: null
     });
 
     res.status(200).json({
