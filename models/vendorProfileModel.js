@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const slugify = require('../utils/slugify');
 
 const vendorProfileSchema = new mongoose.Schema({
   vendorId: {
@@ -20,15 +19,13 @@ const vendorProfileSchema = new mongoose.Schema({
     storeName: { type: String, required: true, index: true },
     storeSlug: { type: String, unique: true, index: true },
     description: String,
-    logo: String,
-    logoId: String,
-    banner: String,
     contactEmail: String,
     contactPhone: String,
-    address: {
+    addresses: {
       country: String,
       city: String,
-      Street: String
+      street: String,
+      postal: String
     }
   },
 
@@ -61,16 +58,24 @@ const vendorProfileSchema = new mongoose.Schema({
     website: String,
   },
 
+  logo: { type: String, default: 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_wordcount_boost&w=740&q=80' },
+  logoId: {type: String, default: '' },
+  banner: { type: String, default: '' },
+  bannerId: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-vendorProfileSchema.index({ vendorId:1, storeName: 1, createdAt: -1 });
+vendorProfileSchema.index({ vendorId:1, 'store.storeName': 1, createdAt: -1 });
 
-vendorProfileSchema.pre('save', function(next) {
-  if (!this.isModified('storeName') || !this.storeName) return next();
-  this.storeSlug = slugify(this.storeName);
+/*vendorProfileSchema.pre('save', function(next) {
+  if (!this.isModified('store.storeName')) return next();
+  
+  if (this.store && this.store.storeName) {
+    this.store.storeSlug = slugify(this.store.storeName);
+  }
+
   next();
-});
+});*/
 
 
-module.exports = mongoose.model('VendorProfile', vendorProfileSchema);
+module.exports = mongoose.model('vendorProfile', vendorProfileSchema);

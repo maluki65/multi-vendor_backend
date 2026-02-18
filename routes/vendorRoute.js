@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
-const { createUpdateVendorProfile, getVendorStats, getVendorOrders, getVendorProfile  } = require('../controllers/vendorController');
+const { createVendorProfile, updateVendorProfile, updateVendorMedia, getVendorStats, getVendorOrders, getVendorProfile  } = require('../controllers/vendorController');
 const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
 const { addVerificationInfo, getVerificationInfo, updateVerificationInfo } = require('../controllers/verificationController');
@@ -28,17 +28,18 @@ router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (r
 });
 
 // On authenticated vendor route
-router.post('/vendor/profile', protect, restrictTo('Vendor'), createUpdateVendorProfile);
+router.post('/profile', protect, restrictTo('Vendor'), createVendorProfile);
 router.post('/verification/', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
-router.patch('/vendor/profile', protect, restrictTo('Vendor'), createUpdateVendorProfile);
+router.patch('/profile/update', protect, restrictTo('Vendor'), updateVendorProfile);
+router.patch('/update/media', protect, restrictTo('Vendor'), updateVendorMedia);
 
 router.get('/vendor/:id/stats', protect, restrictTo('Vendor'), getVendorStats);
 
 router.get('/vendor/:id/profile', protect, restrictTo('Vendor'), getVendorOrders);
 
 // On creating a public route
-router.get('/:id/vendor/profile', getVendorProfile);
+router.get('/profile', protect, getVendorProfile);
 
 // On Vendor products 
 router.post('/vendor/product', protect, restrictTo('Vendor'), vendorGuard, createProduct);

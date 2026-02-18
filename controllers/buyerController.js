@@ -102,7 +102,7 @@ exports.createBuyerProfile = async(req, res, next) => {
 exports.updateBuyerProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { email, phone, address, username, storeName } = req.body;
+    const { email, phone, addresses, username, storeName } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return next(new createError('User not found', 404));
@@ -125,7 +125,7 @@ exports.updateBuyerProfile = async (req, res, next) => {
     
     const profile = await BuyerProfile.findOneAndUpdate(
       { buyerId: userId },
-      { phone, address },
+      { phone, addresses },
       { new: true, upsert: true }
     );
 
@@ -135,6 +135,7 @@ exports.updateBuyerProfile = async (req, res, next) => {
       profile, 
     });
   } catch (error) {
+    console.error('failed to update buyer profile', error);
     next(error);
   }
 };
