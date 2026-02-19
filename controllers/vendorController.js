@@ -3,7 +3,6 @@ const Orders = require('../models/orderModel');
 const User = require('../models/userModel');
 const createError = require('../utils/appError');
 const slugify = require('../utils/slugify');
-const { assertStoreNameAvailable } = require('../services/storeName.validator');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
@@ -34,7 +33,7 @@ exports.createVendorProfile = async(req, res, next) => {
     const userId = req.user.id;
     const { businessInfo, store, payout,  socialLinks, logo, logoId, banner, bannerId } = req.body
 
-    const user = await User.findOne(userId);
+    const user = await User.findById(userId);
     if (!user) return next(new createError('User not found!', 404));
 
     if (user.role !== 'Vendor'){
@@ -137,9 +136,9 @@ exports.updateVendorProfile = async(req, res, next) => {
 
     const profileUpdatedData = {};
 
-    if (req.body.store?.storeName) {
+    /*if (req.body.store?.storeName) {
       profileUpdatedData['store.storeSlug'] = slugify(req.body.storeName);
-    }
+    }*/
 
     for (let key of allowedProfileFields){
       if (req.body[key] !== undefined){
@@ -214,58 +213,6 @@ exports.updateVendorMedia = async (req, res, next) => {
     console.error('Failed to update profile media!', error);
     next(error);
   };
-};
-
-// On creating or updating vendor Profile
-exports.createUpdateVendorProfile = async (req, res, next) => {
-  try{
-    const vendorId = req.user.id;
-    const data = req.body;
-
-    const user = await User.findById(vendorId);
-    if(!user) return next(new createError('User not found', 404));
-
-    if (user.role !== 'Vendor') {
-      return next(new createError('Only vendors can access this profile', 403));
-    }
-
-    if (user.status !== 'approved') {
-      return next(new createError('You vendor account is pending approval', 403));
-    }
-    
-    // on handling store name chanhe safely
-    if (data.storeName && data.storeName !== user.storeName) {
-      const slug = await assertStoreNameAvailable(data.storeName, vendorId);
-      user.storeName = data.storeName;
-      user.storeSlug = slug;
-      await user.save();
-    }
-
-    const profile = await VendorProfile.findOneAndUpdate(
-      { vendorId },
-      { 
-        ...data, 
-        storeName: user.storeName,
-        storeSlug: user.storeSlug,
-        vendorId,
-      },
-      { upsert: true, new: true/*, setDefaultsOnInsert: true*/ }  // if doc doesn't exist create it
-    );
-
-    /*// On keeping the storeName in sync with user model
-    if (data.storeName && data.storeName !== user.storeName){
-      user.storeName = data.storeName;
-      await user.save();
-    }*/
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Vendor profile saved successfully.',
-      profile
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 // On getting vendor stats

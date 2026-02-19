@@ -16,8 +16,8 @@ const vendorProfileSchema = new mongoose.Schema({
   },
 
   store: {
-    storeName: { type: String, required: true, index: true },
-    storeSlug: { type: String, unique: true, index: true },
+    //storeName: { type: String, required: true, index: true },
+    //storeSlug: { type: String, unique: true, index: true },
     description: String,
     contactEmail: String,
     contactPhone: String,
@@ -78,4 +78,4 @@ vendorProfileSchema.index({ vendorId:1, 'store.storeName': 1, createdAt: -1 });
 });*/
 
 
-module.exports = mongoose.model('vendorProfile', vendorProfileSchema);
+module.exports = mongoose.model('VendorProfile', vendorProfileSchema);

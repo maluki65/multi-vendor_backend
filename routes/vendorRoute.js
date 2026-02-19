@@ -29,7 +29,7 @@ router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (r
 
 // On authenticated vendor route
 router.post('/profile', protect, restrictTo('Vendor'), createVendorProfile);
-router.post('/verification/', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
+router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
 router.patch('/profile/update', protect, restrictTo('Vendor'), updateVendorProfile);
 router.patch('/update/media', protect, restrictTo('Vendor'), updateVendorMedia);

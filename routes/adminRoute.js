@@ -39,7 +39,7 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
 router.get('/users', protect, restrictTo('Admin'), getAllUsers);
 
 // On getting all vendors with status pending
-router.get('/vendor/pending', protect, restrictTo('Admin'), getPendingVendors);
+router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPendingVendors);
 
 // On searching users
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
