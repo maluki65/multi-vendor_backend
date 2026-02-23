@@ -31,6 +31,7 @@ const vendorProfileSchema = new mongoose.Schema({
 
   payout: {
     method: { type: String, enum: ['Bank', 'mobile_money', /*'Crypto'*/] },
+    bank: String,
     accountName: String,
     accountNumber: String,
     provider: String,
@@ -55,7 +56,8 @@ const vendorProfileSchema = new mongoose.Schema({
     instagram: String,
     facebook: String,
     x: String,
-    website: String,
+    tiktok: String,
+    //website: String,
   },
 
   logo: { type: String, default: 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_wordcount_boost&w=740&q=80' },
