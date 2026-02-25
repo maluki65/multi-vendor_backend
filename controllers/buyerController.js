@@ -98,6 +98,46 @@ exports.createBuyerProfile = async(req, res, next) => {
   }
 };
 
+// On getting buyer profile by id
+exports.getBuyerProfileById = async(req, res, next) => {
+  try{
+    const { id } = req.params;
+
+    if (req.user.role !== 'Admin') {
+      return next(new createError('Unauthorized access!', 403));
+    }
+
+    const user = await User.findById(id)
+     .select('-password')
+     .populate('buyerProfile');
+
+    if (!user) {
+      return next(new createError('User not found!', 404));
+    }
+
+    if (user.role !== 'Buyer') {
+      return next(new createError('This user is not a buyer!', 400));
+    }
+
+    if (!user.vendorProfile) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'This buyer does not have a profile yet',
+        profile: null,
+      })
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+      profile: user.buyerProfile,
+    });
+  } catch(error) {
+    console.error('Error getting buyer profile:', error);
+    next(error);
+  }
+};
+
 // On updating user profile
 exports.updateBuyerProfile = async (req, res, next) => {
   try {

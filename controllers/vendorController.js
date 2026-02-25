@@ -96,6 +96,47 @@ exports.getVendorProfile = async(req, res, next) => {
   }
 };
 
+// On getting vendor profile by id
+exports.getVendorProfileById = async(req, res, next) => {
+  try{
+    const { id } = req.params;
+
+    if (req.user.role !== 'Admin') {
+      return next(new createError('Unauthorized access!', 403));
+    }
+    
+    const user = await User.findById(id)
+     .select('-password')
+     .populate('vendorProfile');
+
+    if (!user) {
+      return next(new createError('User not found!', 404));
+    }
+
+    if (user.role !== 'Vendor') {
+      return next(new createError('This user is not a vendor!', 400));
+    }
+
+    if (!user.vendorProfile) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'This vendor does not have a profile yet',
+        profile: null,
+      })
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+
+      profile: user.vendorProfile,
+    });
+  } catch(error) {
+    console.error('Error getting vendor profile:', error);
+    next(error);
+  }
+};
+
 // On updating vendor profile
 exports.updateVendorProfile = async(req, res, next) => {
   try {

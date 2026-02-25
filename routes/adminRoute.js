@@ -6,6 +6,8 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
 const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = require('../controllers/commissionController');
 const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = require('../controllers/verificationController');
+const { getBuyerProfileById } = require('../controllers/buyerController');
+const { getVendorProfileById } = require('../controllers/vendorController');
 
 
 const router = express.Router();
@@ -45,6 +47,8 @@ router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPending
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
 router.get('/verification/all', protect, restrictTo('Admin'), getVerificationInfo);
 router.get('/verification/:id', protect, restrictTo('Admin'), getVerificationByUserId);
+router.get('/vendors/:id/profile', protect, restrictTo('Admin'), getVendorProfileById);
+router.get('/buyers/:id/profile', protect, restrictTo('Admin'), getBuyerProfileById);
 
 
 // On approving vendor
