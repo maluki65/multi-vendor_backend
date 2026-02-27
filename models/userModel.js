@@ -63,6 +63,13 @@ userSchema.virtual('vendorProfile', {
   justOne: true,
 });
 
+userSchema.virtual('adminProfile', {
+  ref: 'AdminProfile',
+  localField: '_id',
+  foreignField: 'adminId',
+  justOne: true,
+})
+
 // On enabling virtuals in JSON
 userSchema.set('toJSON',  { virtuals: true });
 userSchema.set('toObject', { virtuals: true });

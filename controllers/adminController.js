@@ -2,7 +2,10 @@ const User = require('../models/userModel');
 const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 //const Profile = require('../models/UserProfile');
+const AdminProfile = require('../models/AdminProfile');
+const removeUndefined = require('../utils/removeUndefined');
 const { sendMail } = require('../utils/nodemailer');
+const mongoose = require('mongoose');
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -15,6 +18,128 @@ const safeUser = (user) => ({
   UUID: user.UUID,
   role: user.role,
 })
+
+// On creating Admin profile
+exports.createAdminProfile = async(req, res, next) => {
+  try{
+    const userId = req.user.id;
+    const { addresses, phoneNo, fullNames, IDPassport, nextOfKin, avatar, avatarId } = req.body;
+
+    const user = await User.findById(userId);
+    if(!user) return next(new createError('User not found!', 404));
+
+    if (user.role !== 'Admin') {
+      return next(new createError('Only Admins can create this profile', 403));
+    }
+
+    const existingProfile = await AdminProfile.findOne({
+      adminId: userId
+    });
+    if (existingProfile) {
+      return next(new craeteError('Admin profile already exists', 400));
+    }
+
+    const profile = await AdminProfile.create({
+      adminId: userId,
+      addresses,
+      phoneNo,
+      fullNames,
+      IDPassport,
+      nextOfKin,
+      avatar,
+      avatarId,
+    });
+
+    user.adminProfile = profile._id;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      profile,
+    })
+  } catch(error) {
+    console.error('Failed to create profile!', error);
+    next(error);
+  }
+};
+
+// On getting Admin profile
+exports.getAdminProfile = async(req, res, next) => {
+  try{
+    const userId = req.user.id;
+
+    const user = await User.findById(userId)
+     .select('-password')
+     .populate('adminProfile');
+
+    if(!user) {
+      return next(new createError('Only admin can access this profile', 403));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+      profile: user.adminProfile || null,
+    });
+  } catch(error) {
+    console.error('Error getting admin profile!', error);
+    next(error);
+  }
+}
+
+// On updating Admin profile
+exports.updateAdminProfile = async(req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try{
+    const adminId = req.user.id;
+
+    if (!adminId) return next(new createError('Unauthorized access!', 401));
+
+    const { username, ...profileFields } = req.body;
+
+    const updateData = removeUndefined(profileFields);
+
+    const updatedProfile = await AdminProfile.findOneAndUpdate(
+      { adminId },
+      updateData,
+      { 
+        new: true,
+        upsert: true,
+        runValidators: true,
+      }
+    );
+
+    let updatedUser = null;
+    if (username) {
+      updatedUser = await User.findByIdAndUpdate(
+        adminId,
+        { username },
+        { 
+          new: true, 
+          runValidators: true,
+          session
+        }
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      status: 'success',
+      profile: updatedProfile,
+      user: updatedUser || undefined,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Failed to update admin profile', error);
+    next(error);
+  }
+};
+
 // On getting all users
 exports.getAllUsers = async(req, res, next) => {
   try { 
