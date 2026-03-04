@@ -284,6 +284,10 @@ exports.getMe = async(req, res, next) => {
       query = query.populate('buyerProfile');
     }
 
+    if(req.user.role === 'Admin') {
+      query = query.populate('adminProfile');
+    }
+
     const user = await query;
 
     if(!user) {

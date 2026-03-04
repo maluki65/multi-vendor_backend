@@ -20,6 +20,7 @@ const adminProfileShema = new mongoose.Schema({
   fullNames: { type:String, required: true, index: true },
   IDPassport: { type: String, required: true, unique: true, index: true },
   nextOfKin: {
+    relationship: { type: String, required: true },
     names: { type: String, reqired: true },
     phone: { type: String, required: true },
   },
@@ -29,4 +30,4 @@ const adminProfileShema = new mongoose.Schema({
  { timeStamps: true }
 )
 
-module.exports = mongoose.model('adminProfile', adminProfileShema);
+module.exports = mongoose.model('AdminProfile', adminProfileShema);

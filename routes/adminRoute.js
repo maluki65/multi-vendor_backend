@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser } = require('../controllers/adminController');
+const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser, createAdminProfile, getAdminProfile, updateAdminProfile } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -13,6 +13,7 @@ const { getVendorProfileById } = require('../controllers/vendorController');
 const router = express.Router();
 
 // On creating admin
+router.post('/profile', protect, restrictTo('Admin'), createAdminProfile);
 router.post('/create', protect, restrictTo('Admin'), authController.admin);
 router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
@@ -39,6 +40,7 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
 
 // On getting all users
 router.get('/users', protect, restrictTo('Admin'), getAllUsers);
+router.get('/profile', protect, restrictTo('Admin'), getAdminProfile);
 
 // On getting all vendors with status pending
 router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPendingVendors);
@@ -65,6 +67,8 @@ router.get('/vendor/commissions/:vendorId', protect, restrictTo('Admin'), getCom
 router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAdminCommission);
 
 router.get('/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
+
+router.patch('/profile', protect, restrictTo('Admin'), updateAdminProfile);
 
 
 router.delete('/delete/user/:userId', protect, restrictTo('Admin'), deleteUser);
