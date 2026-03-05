@@ -11,38 +11,73 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     required: true,
+    index: true,
   },
   name:{ type: String, required: true, index: true },
   description: { type: String, required: true },
   tags: [String],
   price: { type: Number, required: [true, 'Product price is required'], index: true },
+  quantity: { type: Number, required:true, min: 0 },
+
   MainIMg: { type: String, required: true, index: true },
   MainIMgId: { type: String, required: true  },
+
   supportImgs: { type: [String], default: [] },
   supportImgsId: { type: [String], default: [] },
-  status: {
+
+  /*status: {
     type: String,
     enum: ['active', 'inactive'],
     default: 'active',
     index: true,
+  },*/
+  imageCompliance: {
+    backgroundCheck: { type: Boolean, default: false },
+    resolutionCheck: { type: Boolean, default: false },
+    aspectRatioCheck: { type: Boolean, default: false },
+    manuallyReviwed: { type: Boolean, default: false },
   },
+  mainImageMeta: {
+    width: Number,
+    height: Number,
+    aspectRatio: Number
+  },
+
+  moderationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+    index: true,
+  },
+
+  visibility: {
+    type: String,
+    enum: ['published', 'unpublished'],
+    default: 'unpublished',
+    index: true,
+  },
+
+  rejectionReason: { type: String, default: '' },
+
   reviews: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Reviews',
     }
   ],
-  quantity: { type: Number, required: true, min: 0 },
+  averageRating: { type: Number, default: 0, min: 0, max: 5 },
+  totalReviews: { type: Number, default: 0 },
+  
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-productSchema.index({ vendorId:1, status: 1, price: 1, createdAt: -1 });
+productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, moderationStatus: 1, createdAt: -1 });
 
 productSchema.index({
   name: 'text',
   desciption: 'text',
-  category: 'text'
+  tags: 'text'
 });
 
 productSchema.statics.updateAverageRating = async function (productId) {
