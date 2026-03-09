@@ -8,6 +8,7 @@ const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = re
 const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = require('../controllers/verificationController');
 const { getBuyerProfileById } = require('../controllers/buyerController');
 const { getVendorProfileById } = require('../controllers/vendorController');
+const { getPendingProducts, approveProducts, rejectProducts } = require('../controllers/productController');
 
 
 const router = express.Router();
@@ -41,6 +42,7 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
 // On getting all users
 router.get('/users', protect, restrictTo('Admin'), getAllUsers);
 router.get('/profile', protect, restrictTo('Admin'), getAdminProfile);
+router.get('/products/pending', protect, restrictTo('Admin'), getPendingProducts);
 
 // On getting all vendors with status pending
 router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPendingVendors);
@@ -69,6 +71,8 @@ router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAd
 router.get('/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
 
 router.patch('/profile', protect, restrictTo('Admin'), updateAdminProfile);
+router.patch('/products/:id/approve', protect, restrictTo('Admin'));
+router.patch('/products/:id/reject', protect, restrictTo('Admin'));
 
 
 router.delete('/delete/user/:userId', protect, restrictTo('Admin'), deleteUser);

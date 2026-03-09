@@ -5,33 +5,96 @@ const mongoose = require('mongoose');
 const VendorProfiles = require('../models/vendorProfileModel');
 const createError = require('../utils/appError');
 const imageKit = require('../config/imgKit');
+const ImageValidation = require('../utils/ImgValidation');
+const getImageMeta = require('../utils/getImgMetaData');
+const deleteImage = require('../utils/delOrphanImgs');
+const validateImages = require('../utils/ImgValidation');
 
 // On creating  product
 exports.createProduct = async (req, res, next ) => {
+  const uploadedFileIds = [];
+  
   try {
     const vendorId = req.user.id;
 
     const vendor = await VendorProfiles.findOne({ vendorId });
     if(!vendor) return next(new createError('Vendor profile not found', 404));
 
-    const { name, description, tags, price, MainIMg, MainIMgId, supportImgs, supportImgsId, quantity } = req.body;
+    const { 
+      name, 
+      category, 
+      description, 
+      tags, 
+      price, 
+      MainIMg, 
+      MainIMgId,  
+      supportImgs = [],
+      supportImgsId = [], 
+      quantity 
+    } = req.body;
+
+    uploadedFileIds.push(MainIMgId, ...supportImgsId);
+
+    const MainMeta = await getImageMeta(MainIMgId);
+    const MainValidation = ImageValidation(MainMeta);
+
+    const supportMetaData = [];
+    const supportValidations = [];
+
+    for (const id of supportImgsId) {
+      const meta = await getImageMeta(id);
+      supportMetaData.push(meta);
+
+      const validation = validateImages(meta);
+      supportValidations.push(validation);
+    }
 
     const product = await Products.create({
       vendorId: vendor._id,
       name,
+      category,
       description,
       tags,
       price,
+      quantity,
+
       MainIMg,
       MainIMgId,
+
       supportImgs,
       supportImgsId,
-      quantity,
+
+      mainImageMeta: {
+        width: MainValidation.width,
+        height: MainValidation.height,
+        aspectRatio: MainValidation.aspectRatio
+      },
+
+      imageCompliance: {
+        resolutionCheck: MainValidation.resolutionCheck,
+        aspectRatioCheck: MainValidation.aspectRatioCheck,
+        backgroundCheck: false,
+        manuallyReviewed: false
+      },
+
+      moderationStatus: 'pending',
+      visibility: 'unpublished'
     });
 
     res.status(201).json({ status: 'Success', product });
   } catch (error) {
+    console.error('Failed to add product:', error);
     next(error);
+
+    for (const fileId of uploadedFileIds) {
+      try {
+        await deleteImage(fileId);
+      } catch (error) {
+        console.error('Image cleanup failed', fileId, error)
+      }
+    }
+
+    nect(error);
   }
 };
 
@@ -89,6 +152,80 @@ exports.getProductById =  async (req, res, next ) => {
     if(!product) return next(new createError('Product not found!', 404));
     res.status(200).json({ status: 'Success', product });
   } catch (error) {
+    next(error);
+  }
+};
+
+// On getting pendingProducts
+exports.getPendingProducts = async (req, res, next) => {
+  try {
+    const products = await Products.find({
+      moderationStatus: 'pending'
+    })
+     .populate('vendorId', 'businessInfo.legalName')
+     .sort({ createdAt: -1 });
+
+     res.status(200).json({
+      status: 'success',
+      results: products.length,
+      products
+     });
+  } catch(error) {
+    console.error('Failed to get pending products'),
+    next(error);
+  }
+};
+
+// On approving products
+exports.approveProducts = async (req, res, next) => {
+  try {
+    const product = await Products.findByIdAndUpdate(
+      req.params.id,
+      {
+        moderationStatus: 'approved',
+        visibility: 'published'
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return next(new createError('Product not found!', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      product
+    });
+  } catch(error){
+    console.error('Failed to approve product', error);
+    next(error);
+  }
+};
+
+// On rejecting products
+exports.rejectProducts = async (req, res, next) => {
+  try{
+    const { reason } = req.body;
+
+    const product = await Products.findByIdAndUpdate(
+      req.params.id,
+      {
+        moderationStatus: 'rejected',
+        visibility: 'unpublished',
+        rejectionReason: reason
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return next(new createError('Products not found', 404));
+    }
+    res.status(200).json({
+      status: 'success',
+      product
+    });
+  } catch (error){
+    console.error('Failed to reject product', error);
     next(error);
   }
 };

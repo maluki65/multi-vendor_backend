@@ -35,7 +35,7 @@ const productSchema = new mongoose.Schema({
     backgroundCheck: { type: Boolean, default: false },
     resolutionCheck: { type: Boolean, default: false },
     aspectRatioCheck: { type: Boolean, default: false },
-    manuallyReviwed: { type: Boolean, default: false },
+    manuallyReviewed: { type: Boolean, default: false },
   },
   mainImageMeta: {
     width: Number,
@@ -76,7 +76,7 @@ productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIM
 
 productSchema.index({
   name: 'text',
-  desciption: 'text',
+  description: 'text',
   tags: 'text'
 });
 
