@@ -6,6 +6,7 @@ const { getVendorEarnings } = require('../controllers/vendorEarningsController')
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
 const { addVerificationInfo, getVerificationInfo, updateVerificationInfo } = require('../controllers/verificationController');
 const User = require('../models/userModel');
+const { getAllActiveCategories } = require('../controllers/categoryController');
 
 const router = express.Router();
 
@@ -37,12 +38,13 @@ router.patch('/update/media', protect, restrictTo('Vendor'), updateVendorMedia);
 router.get('/vendor/:id/stats', protect, restrictTo('Vendor'), getVendorStats);
 
 router.get('/vendor/:id/profile', protect, restrictTo('Vendor'), getVendorOrders);
+router.get('/categories', protect, restrictTo('Vendor'), getAllActiveCategories);
 
 // On creating a public route
 router.get('/profile', protect, getVendorProfile);
 
 // On Vendor products 
-router.post('/vendor/product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
+router.post('/add-product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
 
 router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
 

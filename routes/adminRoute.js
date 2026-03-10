@@ -9,11 +9,12 @@ const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = r
 const { getBuyerProfileById } = require('../controllers/buyerController');
 const { getVendorProfileById } = require('../controllers/vendorController');
 const { getPendingProducts, approveProducts, rejectProducts } = require('../controllers/productController');
-
+const { AddCategory, getAllCategories, updateCategory, deleteCategory } = require('../controllers/categoryController');
 
 const router = express.Router();
 
 // On creating admin
+router.post('/categories', protect, restrictTo('Admin'), AddCategory);
 router.post('/profile', protect, restrictTo('Admin'), createAdminProfile);
 router.post('/create', protect, restrictTo('Admin'), authController.admin);
 router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
@@ -42,6 +43,7 @@ router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next)
 // On getting all users
 router.get('/users', protect, restrictTo('Admin'), getAllUsers);
 router.get('/profile', protect, restrictTo('Admin'), getAdminProfile);
+router.get('/categories', protect, restrictTo('Admin'), getAllCategories);
 router.get('/products/pending', protect, restrictTo('Admin'), getPendingProducts);
 
 // On getting all vendors with status pending
@@ -70,9 +72,11 @@ router.get('/vendor/commissions/total', protect, restrictTo('Admin'), getTotalAd
 
 router.get('/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrders);
 
+router.patch('/products/:id/approve', protect, restrictTo('Admin'), approveProducts);
+router.patch('/categories/update/:id', protect, restrictTo('Admin'), updateCategory);
+router.patch('/products/:id/reject', protect, restrictTo('Admin'), rejectProducts);
+router.patch('/categories/:id', protect, restrictTo('Admin'), deleteCategory);
 router.patch('/profile', protect, restrictTo('Admin'), updateAdminProfile);
-router.patch('/products/:id/approve', protect, restrictTo('Admin'));
-router.patch('/products/:id/reject', protect, restrictTo('Admin'));
 
 
 router.delete('/delete/user/:userId', protect, restrictTo('Admin'), deleteUser);

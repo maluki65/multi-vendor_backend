@@ -180,13 +180,13 @@ exports.login =  async(req, res, next) => {
       return next (new createError('Invalid password or email', 401));
     }
 
-    // On handling vendor approval states
+    /* On handling vendor approval states
     if (user.role === 'Vendor' && user.status === 'rejected') {
       return res.status(403).json({
-        status: error,
+        status: 'error',
         message: 'Your vendor application was rejected. Please request re-approval'
       });
-    }
+    }*/
 
     createSendToken(user, 200, res);
   } catch (error) {

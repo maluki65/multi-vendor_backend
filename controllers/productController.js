@@ -10,6 +10,32 @@ const getImageMeta = require('../utils/getImgMetaData');
 const deleteImage = require('../utils/delOrphanImgs');
 const validateImages = require('../utils/ImgValidation');
 
+
+// On ensuring that only approved vendors can add products
+exports.vendorGuard = (req, res, next) => {
+  if (req.user.role !== 'Vendor') return next();
+
+  if (req.user.status === 'pending') {
+    return next(
+      new createError(
+        'Your account is still under review. Please submit verification documents.',
+        403
+      )
+    );
+  }
+
+  if (req.user.status === 'rejected') {
+    return next(
+      new createError(
+        'Your vendor account was rejected. Please request re-approval.',
+        403
+      )
+    );
+  }
+
+  next();
+}
+
 // On creating  product
 exports.createProduct = async (req, res, next ) => {
   const uploadedFileIds = [];
@@ -98,30 +124,6 @@ exports.createProduct = async (req, res, next ) => {
   }
 };
 
-// On ensuring that only approved vendors can add products
-exports.vendorGuard = (req, res, next) => {
-  if (req.user.role !== 'Vendor') return next();
-
-  if (req.user.status === 'pending') {
-    return next(
-      new createError(
-        'Your account is still under review. Please submit verification documents.',
-        403
-      )
-    );
-  }
-
-  if (req.user.status === 'rejected') {
-    return next(
-      new createError(
-        'Your vendor account was rejected. Please request re-approval.',
-        403
-      )
-    );
-  }
-
-  next();
-}
 
 // On getting all products for all vendors (Buyer)
 exports.getAllProducts = async (req, res, next ) => {
