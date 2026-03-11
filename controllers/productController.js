@@ -9,6 +9,7 @@ const ImageValidation = require('../utils/ImgValidation');
 const getImageMeta = require('../utils/getImgMetaData');
 const deleteImage = require('../utils/delOrphanImgs');
 const validateImages = require('../utils/ImgValidation');
+const ProductAttribute = require('../models/productAttributeModel');
 
 
 // On ensuring that only approved vendors can add products
@@ -56,7 +57,8 @@ exports.createProduct = async (req, res, next ) => {
       MainIMgId,  
       supportImgs = [],
       supportImgsId = [], 
-      quantity 
+      quantity,
+      attributes = [],
     } = req.body;
 
     uploadedFileIds.push(MainIMgId, ...supportImgsId);
@@ -107,7 +109,20 @@ exports.createProduct = async (req, res, next ) => {
       visibility: 'unpublished'
     });
 
-    res.status(201).json({ status: 'Success', product });
+    if (attributes?.length) {
+      const attributeDocs = attributes.map(attr => ({
+        productId: product._id,
+        attributeId: attr.attributeId,
+        value: attr.value
+      }));
+
+      await ProductAttribute.insertMany(attributeDocs);
+    }
+
+    res.status(201).json({ 
+      status: 'Success', 
+      product 
+    });
   } catch (error) {
     console.error('Failed to add product:', error);
     next(error);
@@ -120,7 +135,7 @@ exports.createProduct = async (req, res, next ) => {
       }
     }
 
-    nect(error);
+    next(error);
   }
 };
 
@@ -128,9 +143,29 @@ exports.createProduct = async (req, res, next ) => {
 // On getting all products for all vendors (Buyer)
 exports.getAllProducts = async (req, res, next ) => {
   try {
-    const product = await Products.find().populate('vendorId', 'storeName logo');
-    res.status(200).json({ status: 'success', results: product.length, product });
+    const products = await Products.find()
+     .populate('vendorId', 'storeName logo');
+
+    const productWithAttributes = await Promise.all(
+      products.map(async (product) => {
+        const attributes = await ProductAttribute
+          .find({ productId: product._id })
+          .populate('attributeId', 'name type')
+
+        return {
+          ...product.toObject(),
+          attributes
+        };
+      })
+    );
+
+    res.status(200).json({ 
+      status: 'success', 
+      results: productWithAttributes.length, 
+      product: productWithAttributes 
+    });
   } catch (error) {
+    console.error('Failed to get products', error);
     next(error);
   }
 };
@@ -139,9 +174,32 @@ exports.getAllProducts = async (req, res, next ) => {
 exports.getVendorProducts = async (req, res, next ) => {
   try{
     const { vendorId } = req.params;
-    const product = await Products.find({ vendorId }).populate('vendorId', 'storeName logo');
-    res.status(200).json({ status: 'success', results: product.length, product });
+
+    const products = await Products
+     .find({ vendorId })
+     .populate('vendorId', 'storeName logo');
+    
+     const productsWithAttributes = await Promise.all(
+      products.map(async (product) => {
+
+        const attributes = await ProductAttribute
+          .find({ productId: product._id })
+          .populate('attributeId', 'name type');
+
+        return {
+          ...product.toObject(),
+          attributes
+        };
+      })
+    );
+
+    res.status(200).json({ 
+      status: 'success', 
+      results: productsWithAttributes.length,
+      products: productsWithAttributes
+    });
   } catch (error) {
+    console.error('Failed to get vendor product', error);
     next(error);
   }
 };
@@ -150,10 +208,31 @@ exports.getVendorProducts = async (req, res, next ) => {
 exports.getProductById =  async (req, res, next ) => {
   try {
     const { id } = req.params;
-    const product = await Products.findById(id).populate('vendorId', 'storeName logo').populate({ path: 'reviews', populate: { path:'userId', select: 'name profileImage'}});
+
+    const product = await Products
+     .findById(id)
+     .populate('vendorId', 'storeName logo')
+     .populate({ 
+       path: 'reviews', 
+       populate: { 
+        path:'userId', 
+        select: 'name profileImage'
+       }
+      });
+
     if(!product) return next(new createError('Product not found!', 404));
-    res.status(200).json({ status: 'Success', product });
+
+    const attributes = await ProductAttribute
+     .find({ productId: product._id })
+     .populate('attributeId', 'name type');
+
+    res.status(200).json({ 
+      status: 'Success', 
+      product,
+      attributes
+    });
   } catch (error) {
+    console.error('Failed to get product', error);
     next(error);
   }
 };

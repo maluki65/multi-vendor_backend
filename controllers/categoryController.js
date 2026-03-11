@@ -1,3 +1,4 @@
+const CategoryAttribute = require('../models/CategoryAttributeModel');
 const Category = require('../models/CategoryModel');
 const Products = require('../models/productModel');
 const createError = require('../utils/appError');
@@ -43,10 +44,21 @@ exports.AddCategory = async(req, res, next) => {
       name: name.trim(),
       parent,
       commissionRate: commission,
-      attributes,
+      //attributes,
       createdBy: username,
       createdById: userId
     });
+
+    if (attributes.length > 0 ){
+      const attributeDocs = attributes.map(attr => ({
+        categoryId: category._id,
+        name: attr.name,
+        type: attr.type,
+        options: attr.options || []
+      }));
+
+      await CategoryAttribute.insertMany(attributeDocs);
+    }
 
     res.status(201).json({
       status:'success',
@@ -62,7 +74,8 @@ exports.AddCategory = async(req, res, next) => {
 exports.getAllCategories = async(req, res, next) => {
   try{
     const categories = await Category.find()
-     .select('name commissionRate parent attributes isActive slug');
+     .select('_id name commissionRate parent attributes isActive slug')
+     .sort({ name: 1 });
 
     res.status(200).json({
       status: 'success',
@@ -88,6 +101,25 @@ exports.getAllActiveCategories = async(req, res, next) => {
     next(error);
   }
 }
+
+exports.getCategoryAttributes = async (req, res, next) => {
+  try{
+    const { categoryId } = req.params;
+
+    const attributes = await CategoryAttribute.find({ categoryId });
+    if(!attributes) {
+      return next(new createError('Attribute not found', 404));
+    }
+
+    res.status(200).json({
+      status:'success',
+      attributes
+    });
+  } catch (error) {
+    console.error('Error getting attributes', error);
+    next(error);
+  }
+};
 
 exports.updateCategory = async(req, res, next) => {
   try{ 
@@ -131,7 +163,7 @@ exports.updateCategory = async(req, res, next) => {
     if (parent !== undefined) updateData.parent = parent;
     if (attributes !== undefined) updateData.attributes = attributes;
 
-    const updatedCategory = await Category.findOneAndUpdate(
+    const updatedCategory = await Category.findByIdAndUpdate(
       id, 
       updateData,
       { new: true, runValidators: true }

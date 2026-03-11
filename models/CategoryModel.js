@@ -23,14 +23,6 @@ const categorySchema = new mongoose.Schema({
     default: true
   },
 
-  attributes: [
-    {
-      name: { type: String, required: true },
-      type: { type: String, enum: ['text', 'number', 'boolean', 'select'], default: 'text' },
-      options: [String]
-    }
-  ],
-
   slug: { type: String, unique: true },
 
   createdBy: { type: String, require: true },
