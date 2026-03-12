@@ -73,12 +73,25 @@ exports.AddCategory = async(req, res, next) => {
 
 exports.getAllCategories = async(req, res, next) => {
   try{
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const skip = (page -1 ) * limit;
+    const total = await Category.countDocuments();
+
     const categories = await Category.find()
      .select('_id name commissionRate parent attributes isActive slug')
-     .sort({ name: 1 });
+     .populate('parent', 'name')
+     .sort({ name: 1 })
+     .skip(skip)
+     .limit(limit)
 
     res.status(200).json({
       status: 'success',
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
       categories
     });
   } catch (error) {
@@ -160,8 +173,12 @@ exports.updateCategory = async(req, res, next) => {
       updateData.commissionRate = commissionRate / 100;
     }
 
-    if (parent !== undefined) updateData.parent = parent;
-    if (attributes !== undefined) updateData.attributes = attributes;
+    if (parent !== undefined) {
+      updateData.parent = parent || null;
+    }
+    if (attributes !== undefined) {
+      updateData.attributes = Array.isArray(attributes) ? attributes : [];
+    }
 
     const updatedCategory = await Category.findByIdAndUpdate(
       id, 
@@ -180,7 +197,7 @@ exports.updateCategory = async(req, res, next) => {
   }
 };
 
-exports.deleteCategory = async(req, res, next) => {
+/*exports.deleteCategory = async(req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -200,7 +217,7 @@ exports.deleteCategory = async(req, res, next) => {
 
     if (productUsingCategory > 0){
       return next(
-        new createError('Caanot delete category because products are assigned to it', 400)
+        new createError('Canot delete category because products are assigned to it', 400)
       );
     }
 
@@ -217,3 +234,69 @@ exports.deleteCategory = async(req, res, next) => {
     next(error);
   }
 };
+
+exports.activateCategory = async(req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.role !== 'Admin') {
+      return next(new createError('Only admins can delete a category', 403));
+    }
+
+    const category = await Category.findById(id);
+
+    if(!category) {
+      return next(new createError('Category not found', 404));
+    }
+
+    //const productUsingCategory = await Products.countDocuments({
+      category: id
+    });
+
+   // if (productUsingCategory > 0){
+      return next(
+        new createError('Canot delete category because products are assigned to it', 400)
+      );
+    }
+
+    //await Category.findByIdAndDelete(id);
+    category.isActive = true;
+    await category.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Category activated successfully'
+    });
+  } catch(error){
+    console.error('Error activating category', error);
+    next(error);
+  }
+}*/
+
+exports.toggleCategoryStatus = async(req, res, next) => {
+  try{
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (req.user.role !== 'Admin') {
+      return next(new createError('Only admins can update a category', 403));
+    }
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return next(new createError('Category not found', 404));
+    }
+
+    category.isActive = !!isActive; 
+    await category.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: `Category ${category.isActive ? 'activated' : 'deactivated'} successfully`,
+      category
+    });
+  } catch (error) {
+    console.error('Error toggling category', error);
+    next(error);
+  }
+}

@@ -9,7 +9,7 @@ const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = r
 const { getBuyerProfileById } = require('../controllers/buyerController');
 const { getVendorProfileById } = require('../controllers/vendorController');
 const { getPendingProducts, approveProducts, rejectProducts } = require('../controllers/productController');
-const { AddCategory, getAllCategories, updateCategory, deleteCategory } = require('../controllers/categoryController');
+const { AddCategory, getAllCategories, updateCategory, toggleCategoryStatus } = require('../controllers/categoryController');
 
 const router = express.Router();
 
@@ -75,7 +75,7 @@ router.get('/cancelledOrders', protect, restrictTo('Admin'), getAllCancelledOrde
 router.patch('/products/:id/approve', protect, restrictTo('Admin'), approveProducts);
 router.patch('/categories/update/:id', protect, restrictTo('Admin'), updateCategory);
 router.patch('/products/:id/reject', protect, restrictTo('Admin'), rejectProducts);
-router.patch('/categories/:id', protect, restrictTo('Admin'), deleteCategory);
+router.patch('/categories/:id/status', protect, restrictTo('Admin'), toggleCategoryStatus);
 router.patch('/profile', protect, restrictTo('Admin'), updateAdminProfile);
 
 
