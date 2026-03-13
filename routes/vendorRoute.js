@@ -47,16 +47,16 @@ router.get('/profile', protect, getVendorProfile);
 // On Vendor products 
 router.post('/add-product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
 
-router.get('/vendor/products', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
+router.get('/vendor/products/:id', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
 
 router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
 router.get('/verification/me', protect, restrictTo('Vendor', 'Admin'), getVerificationInfo);
 
-router.put('/vendor/product/:id', protect, restrictTo('Vendor'), updateProduct);
+router.put('/product/update/:id', protect, restrictTo('Vendor'), updateProduct);
 router.patch('/verification/resubmit', protect, restrictTo('Vendor', 'Admin'), updateVerificationInfo);
 
-router.delete('/vendor/product/:id', protect, restrictTo('Vendor'), deleteProduct);
+router.delete('/product/delete/:id', protect, restrictTo('Vendor'), deleteProduct);
 
 // On vendor earnings
 router.get('/vendor/earnings', protect, restrictTo('Vendor', 'Admin'), getVendorEarnings);

@@ -1,5 +1,5 @@
 const Products = require('../models/productModel');
-const Reviews = require('../models/reviewsModel');
+//const Reviews = require('../models/reviewsModel');
 const Orders = require('../models/orderModel');
 const mongoose = require('mongoose');
 const VendorProfiles = require('../models/vendorProfileModel');
@@ -10,6 +10,7 @@ const getImageMeta = require('../utils/getImgMetaData');
 const deleteImage = require('../utils/delOrphanImgs');
 const validateImages = require('../utils/ImgValidation');
 const ProductAttribute = require('../models/productAttributeModel');
+const APIFeatures = require('../utils/APIFeatures');
 
 
 // On ensuring that only approved vendors can add products
@@ -141,16 +142,26 @@ exports.createProduct = async (req, res, next ) => {
 
 
 // On getting all products for all vendors (Buyer)
-exports.getAllProducts = async (req, res, next ) => {
+exports.getAllProducts = async (req, res, next) => {
   try {
-    const products = await Products.find()
-     .populate('vendorId', 'storeName logo');
+
+    const features = new APIFeatures(
+      Products.find({ visibility: 'published' })
+        .populate('vendorId', 'storeName logo'),
+      req.query
+    )
+      .filter()
+      .search()
+      .sort()
+      .paginate();
+
+    const products = await features.query;
 
     const productWithAttributes = await Promise.all(
       products.map(async (product) => {
         const attributes = await ProductAttribute
           .find({ productId: product._id })
-          .populate('attributeId', 'name type')
+          .populate('attributeId', 'name type');
 
         return {
           ...product.toObject(),
@@ -159,11 +170,16 @@ exports.getAllProducts = async (req, res, next ) => {
       })
     );
 
-    res.status(200).json({ 
-      status: 'success', 
-      results: productWithAttributes.length, 
-      product: productWithAttributes 
+    const total = await Products.countDocuments({ visibility: 'published' });
+
+    res.status(200).json({
+      status: 'success',
+      results: productWithAttributes.length,
+      total,
+      page: req.query.page || 1,
+      products: productWithAttributes
     });
+
   } catch (error) {
     console.error('Failed to get products', error);
     next(error);
@@ -314,25 +330,29 @@ exports.rejectProducts = async (req, res, next) => {
 // On updating a product
 exports.updateProduct = async (req, res, next ) => {
   try { 
-    const vendorId = req.user.id;
     const { id } = req.params;
-    const updates = req.body;
+    const vendorId = req.user.id;
 
     // on finding a product and verifying ownership
-    const product = await Products.findById(id);
-    if(!product) return next(new createError('Product not found:', 404));
-
     const vendorProfile = await VendorProfiles.findOne({ vendorId });
-    if(!vendorProfile || product.vendorId.toString() !== vendorProfile._id.toString()) {
-      return next(new createError('Not authorized to edit this product', 403));
-    }
+    if (!vendorProfile) 
+      return next(new createError('Vendor profile not found!', 404));
 
     const allowedFields = ['name', 'description', 'price', 'quantity', 'tags'];
-    Object.keys(updates).forEach((key) => {
-      if (allowedFields.includes(key)) product[key] = updates[key];
+    const updates = {};
+
+    Object.keys(req.body).forEach((key) => {
+      if (allowedFields.includes(key)) updates[key] = req.body[key];
     });
 
-    await product.save();
+    const product = await Products.findOneAndUpdate(
+      { _id: id, vendorId: vendorProfile._id },
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if(!product)
+      return next(new createError('Product ot found or not authorized',  404));
 
     res.status(200).json({
       status: 'success',
@@ -340,6 +360,7 @@ exports.updateProduct = async (req, res, next ) => {
       product,
     });
   } catch (error) {
+    console.error('Failed  to update product', error);
     next(error);
   }
 };
@@ -353,12 +374,16 @@ exports.deleteProduct = async (req, res, next) => {
     const vendorProfile = await VendorProfiles.findOne({ vendorId });
     if(!vendorProfile) return next(new createError('Vendor profile not found', 404));
     
-    const product = await Products.findById(id);
-    if (!product) return next(new createError('Product not found', 404));
+    const product = await Products.findOne({
+      _id: id,
+      vendorId: vendorProfile._id
+    });
 
-    if (product.vendorId.toString() !== vendorProfile._id.toString()){
+    if (!product) return next(new createError('Product not found or not authorized', 404));
+
+    /*if (product.vendorId.toString() !== vendorProfile._id.toString()){
       return next(new createError('Not authorized to delete this product', 403));
-    }
+    }*/
 
     if (product.MainIMgId){
       try {
@@ -376,19 +401,20 @@ exports.deleteProduct = async (req, res, next) => {
       }
     }
 
-    await Products.findByIdAndDelete(id);
+    await product.deleteOne();
 
     res.status(200).json({
       status: 'success',
       message: 'Product deleted successfully',
     });
   } catch (error) {
+    console.error('Failed to delete product', error);
     next(error);
   }
 }
 
 // On posting a review for a product (Buyer)
-exports.postReview = async (req, res, next ) => {
+/*exports.postReview = async (req, res, next ) => {
   try {
     const userId = req.user.id;
     const { productId } = req.params;
@@ -397,13 +423,24 @@ exports.postReview = async (req, res, next ) => {
     const product = await Products.findById(productId);
     if(!product) return next( new createError('Product not found!', 404));
 
-    const review = await Reviews.create({ productId, userId, rating, comment });
+    const review = await Reviews.create({ 
+      productId, 
+      userId, 
+      rating, 
+      comment 
+    });
 
     product.reviews.push(review._id);
     await product.save();
 
-    res.status(201).json({ status: 'success', review });
+    await Products.updateAverageRating(productId);
+
+    res.status(201).json({ 
+      status: 'success', 
+      review 
+    });
   } catch (error) {
+    console.error('Failed to add review', error);
     next(error);
   }
 };
@@ -412,22 +449,32 @@ exports.postReview = async (req, res, next ) => {
 exports.getProductReviews = async (req, res, next ) => {
   try {
     const { productId } = req.params;
-    const reviews = await Reviews.find({ productId }).populate('userId', 'name profileImage');
+
+    const reviews = await Reviews
+     .find({ productId })
+     .populate('userId', 'name profileImage')
+     .sort({ createdAt: -1 });
+
     res.status(200).json({
       status: 'success',
-      results: reviews.length, reviews
+      results: reviews.length, 
+      reviews
     });
   } catch (error) {
+    console.error('Failed to get product review', error);
     next(error);
   }
-};
+};*/
 
 // On updating product quantity after complete order
 exports.updateProductQuantity = async (productId, quantityOrdered) => {
-  const product = await Products.findById(productId);
+  const product = await Products.findByIdAndUpdate(
+    productId,
+    { $inc: { quantity: -quantityOrdered }},
+    { new: true }
+  );
   if(!product) return;
 
-  product.quantity -= quantityOrdered;
   if(product.quantity < 5 ){
     console.log(`Low stock alert for product: ${product.name} (Qty: ${product.quantity})`);
   }
@@ -435,59 +482,82 @@ exports.updateProductQuantity = async (productId, quantityOrdered) => {
 
 // On smart recommendation with trending and top-rated products
 exports.getSmartRecomendations = async (req, res, next) => {
-  try{
+  try {
     const { productId } = req.params;
     const { vendorId, page = 1, limit = 10, period = 'week' } = req.query;
 
-    const skip = (page - 1)* limit;
-    
+    const skip = (page - 1) * limit;
 
-    // On getting top-rated products
-    const topRated = await Products.find( vendorId ? { status: 'active', vendorId } : { status: 'active'})
-    .sort({ averageRating: -1, totalReviews: -1 })
-    .skip(skip)
-    .limit(10);
+    const query = vendorId
+      ? { visibility: 'published', vendorId }
+      : { visibility: 'published' };
 
-    // On getting trending products based on orders
+    const topRated = await Products.find(query)
+      .sort({ averageRating: -1, totalReviews: -1 })
+      .skip(skip)
+      .limit(limit);
+
     let startDate = new Date();
+
     if (period === 'today') startDate.setHours(0, 0, 0, 0);
     else startDate.setDate(startDate.getDate() - 7);
 
     const trending = await Orders.aggregate([
-      { $match: { createdAt: { $gte: startDate }}},
+      { $match: { createdAt: { $gte: startDate } } },
       { $unwind: '$products' },
-      { $group: { _id: '$products.productId', orders: { $sum: 1 }}},
-      { $sort: { orders: -1 }},
+      { $group: { _id: '$products.productId', orders: { $sum: 1 } } },
+      { $sort: { orders: -1 } },
       { $limit: 10 },
-      { $lookup: {from: 'products', localField: '_id', foreignField: '_id', as: 'product'}},
-      { $unwind: '$product'}
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' }
     ]);
 
-    // On customer also bought
     let alsoBought = [];
+
     if (productId) {
       alsoBought = await Orders.aggregate([
-        { $match: { 'products.productId': mongoose.Types.ObjectId(productId)}},
-        { $unwind: '$products'},
-        { $match: { 'products.productId': { $ne: mongoose.Types.ObjectId(productId)}}},
-        { $group: { _id: '$products.productId', count: {$sum: 1}}},
-        { $sort: { count: -1 }},
+        { $match: { 'products.productId': mongoose.Types.ObjectId(productId) } },
+        { $unwind: '$products' },
+        {
+          $match: {
+            'products.productId': {
+              $ne: mongoose.Types.ObjectId(productId)
+            }
+          }
+        },
+        { $group: { _id: '$products.productId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
         { $limit: 10 },
-        { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product'}},
-        { $unwind: '$product'}
+        {
+          $lookup: {
+            from: 'products',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'product'
+          }
+        },
+        { $unwind: '$product' }
       ]);
     }
 
     res.status(200).json({
       status: 'success',
-      recommdations: {
+      recommendations: {
         topRated,
         trending,
         alsoBought
       }
     });
 
-  } catch(error){
+  } catch (error) {
+    console.log('Failed to get product recommedations:', error),
     next(error);
   }
 };

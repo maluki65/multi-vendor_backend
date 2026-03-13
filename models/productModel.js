@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('../utils/slugify');
 
 const productSchema = new mongoose.Schema({
   vendorId: {
@@ -14,6 +15,7 @@ const productSchema = new mongoose.Schema({
     index: true,
   },
   name:{ type: String, required: true, index: true },
+  slug: { type: String, index: true },
   description: { type: String, required: true },
   tags: [String],
   price: { type: Number, required: [true, 'Product price is required'], index: true },
@@ -72,12 +74,19 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, moderationStatus: 1, createdAt: -1 });
+productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, createdAt: -1 });
 
 productSchema.index({
   name: 'text',
   description: 'text',
   tags: 'text'
+});
+
+productSchema.pre('save', function(next) {
+  if(this.isModified('name')) {
+    this.slug = slugify(this.name, {lower: true });
+  }
+  next();
 });
 
 productSchema.statics.updateAverageRating = async function (productId) {

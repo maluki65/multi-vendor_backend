@@ -20,4 +20,4 @@ const reviewSchema = new mongoose.Schema({
 
 reviewSchema.index({ productId: 1, userId:1, rating: 1, createdAt: -1 });
 
-module.exporsts = mongoose.model('Reviews', reviewSchema);
+module.exports = mongoose.model('Reviews', reviewSchema);
