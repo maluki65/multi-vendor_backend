@@ -86,6 +86,7 @@ exports.createProduct = async (req, res, next ) => {
       tags,
       price,
       quantity,
+      attributes,
 
       MainIMg,
       MainIMgId,

@@ -45,6 +45,17 @@ const productSchema = new mongoose.Schema({
     aspectRatio: Number
   },
 
+  attributes: [
+    {
+      attributeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CategoryAttribute'
+      },
+      name: String,
+      value: mongoose.Schema.Types.Mixed
+    }
+  ],
+
   moderationStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

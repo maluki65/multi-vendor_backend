@@ -119,13 +119,26 @@ exports.getCategoryAttributes = async (req, res, next) => {
   try{
     const { categoryId } = req.params;
 
-    const attributes = await CategoryAttribute.find({ categoryId });
-    if(!attributes) {
-      return next(new createError('Attribute not found', 404));
+    const category = await Category.findById(categoryId);
+    if (!category){
+      return next(new createError('Category not found', 404));
+    }
+
+    let attributes = await CategoryAttribute.find({ categoryId });
+    if (category.parent) {
+      const parentAttributes = await CategoryAttribute.find({
+        categoryId: category.parent
+      });
+
+      attributes = [
+        ...parentAttributes,
+        ...attributes
+      ];
     }
 
     res.status(200).json({
       status:'success',
+      count: attributes.length,
       attributes
     });
   } catch (error) {
