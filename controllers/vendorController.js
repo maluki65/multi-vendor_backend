@@ -85,10 +85,17 @@ exports.getVendorProfile = async(req, res, next) => {
       return next(new createError('Only vendors can access this profile', 403));
     }
 
+    const profile = user.vendorProfile || null
+    const normalizedProfile = profile ? {
+      ...profile.toObject(),
+      avatar: profile.logo,
+    }
+    : null;
+
     res.status(200).json({
       status: 'success',
       user,
-      profile: user.vendorProfile || null,
+      profile: normalizedProfile,
     });
   } catch(error){
     console.error('Error getting vendor profile!', error);

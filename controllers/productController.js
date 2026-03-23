@@ -190,7 +190,7 @@ exports.getAllProducts = async (req, res, next) => {
 // On getting products by a specific vendor
 exports.getVendorProducts = async (req, res, next ) => {
   try{
-    const { vendorId } = req.params;
+    const vendorId = req.params.id;
 
     const products = await Products
      .find({ vendorId })

@@ -46,9 +46,9 @@ router.get('/profile', protect, getVendorProfile);
 // On Vendor products 
 router.post('/add-product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
 
-router.get('/vendor/products/:id', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
+router.get('/products/:id', protect, restrictTo('Vendor', 'Buyer'), getVendorProducts);
 
-router.get('/vendor/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
+router.get('/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
 router.get('/verification/me', protect, restrictTo('Vendor', 'Admin'), getVerificationInfo);
 

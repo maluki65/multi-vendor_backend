@@ -27,6 +27,7 @@ exports.protect = async(req, res, next) => {
       return next(new createError('Session expired — please login again', 401));
     }
     
+    
     req.user = {
       id: user._id,
       username: user.username,
