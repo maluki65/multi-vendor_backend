@@ -188,35 +188,60 @@ exports.getAllProducts = async (req, res, next) => {
 };
 
 // On getting products by a specific vendor
-exports.getVendorProducts = async (req, res, next ) => {
-  try{
+exports.getVendorProducts = async (req, res, next) => {
+  try {
     const vendorId = req.params.id;
 
-    const products = await Products
-     .find({ vendorId })
-     .populate('vendorId', 'storeName logo');
-    
-     const productsWithAttributes = await Promise.all(
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const search = req.query.search || '';
+    const skip = (page - 1) * limit;
+
+    const query = { vendorId };
+    if (search) query.name = { $regex: search, $options: 'i' };
+
+    const total = await Products.countDocuments(query);
+
+    const products = await Products.find(query)
+      .skip(skip)
+      .limit(limit)
+      .populate('vendorId', 'storeName logo')
+      .lean();
+
+    const productsWithAttributes = await Promise.all(
       products.map(async (product) => {
-
-        const attributes = await ProductAttribute
-          .find({ productId: product._id })
+        const attributes = await ProductAttribute.find({ productId: product._id })
           .populate('attributeId', 'name type');
-
-        return {
-          ...product.toObject(),
-          attributes
-        };
+        return { ...product, attributes };
       })
     );
 
-    res.status(200).json({ 
-      status: 'success', 
-      results: productsWithAttributes.length,
+    const statusAggregation = await Products.aggregate([
+      {
+        $match: {
+          $expr: { $eq: ['$vendorId', { $toObjectId: vendorId }] } 
+        }
+      },
+      { $group: { _id: '$moderationStatus', count: { $sum: 1 } } }
+    ]);
+
+    const counts = { all: 0, pending: 0, approved: 0, rejected: 0 };
+    statusAggregation.forEach((item) => {
+      counts[item._id] = item.count;
+      counts.all += item.count;
+    });
+
+    res.status(200).json({
+      status: 'success',
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total,
+      counts,
       products: productsWithAttributes
     });
+
   } catch (error) {
-    console.error('Failed to get vendor product', error);
+    console.error('Failed to get vendor products:', error);
     next(error);
   }
 };
