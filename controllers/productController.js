@@ -12,7 +12,6 @@ const validateImages = require('../utils/ImgValidation');
 const ProductAttribute = require('../models/productAttributeModel');
 const APIFeatures = require('../utils/APIFeatures');
 
-
 // On ensuring that only approved vendors can add products
 exports.vendorGuard = (req, res, next) => {
   if (req.user.role !== 'Vendor') return next();
@@ -205,7 +204,10 @@ exports.getVendorProducts = async (req, res, next) => {
     const products = await Products.find(query)
       .skip(skip)
       .limit(limit)
+      .sort('-createdAt')
       .populate('vendorId', 'storeName logo')
+      .populate('category', 'name')
+      .populate('attributes.attributeId', 'name')
       .lean();
 
     const productsWithAttributes = await Promise.all(
@@ -364,26 +366,60 @@ exports.updateProduct = async (req, res, next ) => {
     if (!vendorProfile) 
       return next(new createError('Vendor profile not found!', 404));
 
-    const allowedFields = ['name', 'description', 'price', 'quantity', 'tags'];
+    const allowedFields = [
+      'name',
+      'category',
+      'description',
+      'price',
+      'quantity',
+      'tags',
+      'MainIMg',
+      'MainIMgId',
+      'supportImgs',
+      'supportImgsId'
+    ];
     const updates = {};
 
     Object.keys(req.body).forEach((key) => {
       if (allowedFields.includes(key)) updates[key] = req.body[key];
     });
 
-    const product = await Products.findOneAndUpdate(
-      { _id: id, vendorId: vendorProfile._id },
-      updates,
-      { new: true, runValidators: true }
-    );
+    if(updates.MainIMg || (updates.supportImgs && updates.supportImgs.length > 0)) {
+      updates.moderationStatus = 'pending';
+      updates.visibility = 'unpublished';
+    }
 
-    if(!product)
-      return next(new createError('Product ot found or not authorized',  404));
+    const product = await Products.findOne({ _id: id, vendorId: vendorProfile._id});   
+
+    const oldImages = {
+      MainIMgId: product.MainIMgId,
+      supportImgsId: product.supportImgsId || []
+    };
+
+    Object.assign(product, updates);
+    const updatedProduct = await product.save();
+
+    try {
+      if (updates.MainIMg && oldImages.MainIMgId){
+        await imageKit.deleteFile(oldImages.MainIMgId);
+      }
+      if (updates.supportImgsId && oldImages.supportImgsId.length > 0){
+        for (const imgId of oldImages.supportImgsId){
+          await imageKit.deleteFile(imgId);
+        }
+      }
+    } catch (imgeDeleteError){
+      console.error('Failed to delete old images from ImageKit:', imgeDeleteError);
+      //next(imgeDeleteError);
+    }
+
+    /*if(!product)
+      return next(new createError('Product ot found or not authorized',  404));*/
 
     res.status(200).json({
       status: 'success',
       message: 'Product update successfully',
-      product,
+      product: updatedProduct
     });
   } catch (error) {
     console.error('Failed  to update product', error);

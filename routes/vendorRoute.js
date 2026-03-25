@@ -52,7 +52,7 @@ router.get('/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductByI
 
 router.get('/verification/me', protect, restrictTo('Vendor', 'Admin'), getVerificationInfo);
 
-router.put('/product/update/:id', protect, restrictTo('Vendor'), updateProduct);
+router.patch('/product/update/:id', protect, restrictTo('Vendor'), updateProduct);
 router.patch('/verification/resubmit', protect, restrictTo('Vendor', 'Admin'), updateVerificationInfo);
 
 router.delete('/product/delete/:id', protect, restrictTo('Vendor'), deleteProduct);
