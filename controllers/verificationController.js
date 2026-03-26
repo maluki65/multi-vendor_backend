@@ -113,15 +113,16 @@ exports.updateVerificationInfo = async(req, res, next) => {
   try{
     const userId = req.user.id;
 
-    const { verificationImg, verificationImgIds, termsConditions } = req.body;
+    const { verificationFiles,  signature, termsConditions } = req.body;
+
 
     if (
-      !Array.isArray(verificationImg) || verificationImg.length === 0 ||
-      !Array.isArray(verificationIds) || verificationIds.length === 0 ||
-      termsConditions !== true
+      !Array.isArray(verificationFiles) || verificationFiles.length === 0 ||
+      termsConditions !== true 
+      || !signature
     ) {
-      return next(new createError('Missing or invalid required fields', 400));
-    }
+    return next(new createError('Missing or invalid required fields!', 400));
+  }
 
     const user = await User.findById(userId);
     if(!user) {
@@ -129,22 +130,23 @@ exports.updateVerificationInfo = async(req, res, next) => {
     }
 
     if (user.role !== 'Vendor') {
-      return next(new createError('Only cendors can update verification info', 403));
+      return next(new createError('Only vendors can update verification info', 403));
     }
 
     if (user.status !== 'rejected') {
       return next(new createError('Verification can only be updated if status is rejected', 403));
     }
 
-    const verification = await Verification.findOne({ verificationId: userId });
+    const verification = await Verification.findOne({ verificationId: userId })
+    .populate('verificationId', 'storeName email role status rejectionReason')
 
     if(!verification) {
       return next(new createError('Verification record not found!', 404));
     }
 
-    verification.verificationImg = verificationImg;
-    verification.verificationImgIds = verificationImgIds;
+    verification.verificationFiles = verificationFiles;
     verification.termsConditions = termsConditions;
+    verification.signature = signature;
 
     await verification.save();
 

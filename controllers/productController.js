@@ -387,6 +387,7 @@ exports.updateProduct = async (req, res, next ) => {
     if(updates.MainIMg || (updates.supportImgs && updates.supportImgs.length > 0)) {
       updates.moderationStatus = 'pending';
       updates.visibility = 'unpublished';
+      updates.rejectionReason = '';
     }
 
     const product = await Products.findOne({ _id: id, vendorId: vendorProfile._id});   
