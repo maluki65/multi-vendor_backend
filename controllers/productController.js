@@ -144,33 +144,49 @@ exports.createProduct = async (req, res, next ) => {
 // On getting all products for all vendors (Buyer)
 exports.getAllProducts = async (req, res, next) => {
   try {
+    const isLatest = req.query.limit && !req.query.page;
 
     const features = new APIFeatures(
       Products.find({ visibility: 'published' })
-        .populate('vendorId', 'storeName logo'),
+      .populate('vendorId', 'storeName logo'),
       req.query
     )
       .filter()
       .search()
       .sort()
       .paginate();
-
+    
     const products = await features.query;
 
-    const productWithAttributes = await Promise.all(
-      products.map(async (product) => {
-        const attributes = await ProductAttribute
-          .find({ productId: product._id })
-          .populate('attributeId', 'name type');
+    const productIds = products.map(p => p._id);
 
-        return {
-          ...product.toObject(),
-          attributes
-        };
-      })
-    );
+    const allAttributes = await ProductAttribute
+     .find({ productId: { $in: productIds }})
+     .populate('attributeId', 'name type');
 
-    const total = await Products.countDocuments({ visibility: 'published' });
+    const groupedAttributes = {};
+    allAttributes.forEach(attr => {
+      const id = attr.productId.toString();
+      if(!groupedAttributes[id]) groupedAttributes[id] = [];
+      groupedAttributes[id].push(attr);
+    });
+
+    const productWithAttributes = products.map(product => ({
+      ...product.toObject(),
+      attributes: groupedAttributes[product._id] || []
+    }));
+
+    let total = null;
+    if(!isLatest) {
+      const totalQuery = new APIFeatures(
+        Products.find({ visibility: 'published' }),
+        req.query
+      )
+      .filter()
+      .search();
+
+      total = await totalQuery.query.countDocuments();
+    }
 
     res.status(200).json({
       status: 'success',
@@ -179,7 +195,6 @@ exports.getAllProducts = async (req, res, next) => {
       page: req.query.page || 1,
       products: productWithAttributes
     });
-
   } catch (error) {
     console.error('Failed to get products', error);
     next(error);
