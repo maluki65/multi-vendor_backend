@@ -16,8 +16,11 @@ const productSchema = new mongoose.Schema({
   },
   name:{ type: String, required: true, index: true },
   slug: { type: String, index: true },
+  discount: { type: Number},
   description: { type: String, required: true },
+  discountPrice: { type: Number, required: false },
   tags: [String],
+  brand: { type: String, required: true, index: true },
   price: { type: Number, required: [true, 'Product price is required'], index: true },
   quantity: { type: Number, required:true, min: 0 },
 
@@ -63,6 +66,13 @@ const productSchema = new mongoose.Schema({
     index: true,
   },
 
+  featured: { 
+    type: String,
+    enum: ['true', 'false'],
+    default: 'true',
+    index: true,
+  },
+
   visibility: {
     type: String,
     enum: ['published', 'unpublished'],
@@ -85,7 +95,7 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, createdAt: -1 });
+productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, featured: -1, brand: -1, createdAt: -1 });
 
 productSchema.index({
   name: 'text',

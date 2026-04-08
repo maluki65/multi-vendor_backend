@@ -58,6 +58,9 @@ exports.createProduct = async (req, res, next ) => {
       supportImgs = [],
       supportImgsId = [], 
       quantity,
+      brand,
+      discount,
+      featured,
       attributes = [],
     } = req.body;
 
@@ -77,15 +80,31 @@ exports.createProduct = async (req, res, next ) => {
       supportValidations.push(validation);
     }
 
+    if (discount < 0 || discount > 100) {
+      return next(new createError('Discount must be between 0 and 100', 400));
+    };
+
+    const priceInCents = Math.round(Number(price) * 100);
+    const discountPercentage = Math.round((discount)) || 0;
+
+    const discountAmount = Math.round((discountPercentage / 100) * priceInCents);
+    const finalPriceInCents = priceInCents - discountAmount;
+
+    const discountPriceInCents = finalPriceInCents;
+
     const product = await Products.create({
       vendorId: vendor._id,
       name,
       category,
       description,
       tags,
-      price,
+      price:priceInCents,
+      discount,
       quantity,
       attributes,
+      brand,
+      featured,
+      discountPrice: discountPriceInCents,
 
       MainIMg,
       MainIMgId,
@@ -126,7 +145,6 @@ exports.createProduct = async (req, res, next ) => {
     });
   } catch (error) {
     console.error('Failed to add product:', error);
-    next(error);
 
     for (const fileId of uploadedFileIds) {
       try {
