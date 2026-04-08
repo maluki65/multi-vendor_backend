@@ -38,7 +38,7 @@ router.patch('/update/media', protect, restrictTo('Vendor'), updateVendorMedia);
 router.get('/vendor/:id/stats', protect, restrictTo('Vendor'), getVendorStats);
 
 router.get('/vendor/:id/profile', protect, restrictTo('Vendor'), getVendorOrders);
-router.get('/categories', protect, restrictTo('Vendor', 'Admin'), getAllActiveCategories);
+router.get('/categories', protect, restrictTo('Vendor', 'Admin', 'Buyer'), getAllActiveCategories);
 
 // On creating a public route
 router.get('/profile', protect, getVendorProfile);
