@@ -100,7 +100,8 @@ productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIM
 productSchema.index({
   name: 'text',
   description: 'text',
-  tags: 'text'
+  tags: 'text',
+  brand: 'text' 
 });
 
 productSchema.pre('save', function(next) {

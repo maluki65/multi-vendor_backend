@@ -6,21 +6,35 @@ class APIFeatures {
 
   filter() {
     const queryObj = { ...this.queryString };
-    const excluded = [ 'page', 'limit', 'sort', 'search'];
+    const excluded = ['page', 'limit', 'sort', 'search'];
     excluded.forEach(el => delete queryObj[el]);
-
-    // On advanced filtering (eg price)
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (m) => `$${m}`);
-
-    this.query = this.query.find(JSON.parse(queryStr));
+  
+    const mongoQuery = {};
+  
+    for (let key in queryObj) {
+      if (typeof queryObj[key] === 'object') {
+        mongoQuery[key] = queryObj[key];
+      } else {
+        mongoQuery[key] = queryObj[key];
+      }
+    }
+  
+    this.query = this.query.find(mongoQuery);
     return this;
   }
 
   search() {
     if (this.queryString.search) {
+      const search = this.queryString.search;
+
       this.query = this.query.find({
-        $text: { $search: this.queryString.search }
+        $or: [
+          { $text: { $search: search }},
+          
+          { brand: { $regex: search, $options: 'i'}},
+
+          { name: { $regex: search, $options: 'i'}}
+        ]
       });
     }
     return this;
@@ -28,10 +42,17 @@ class APIFeatures {
 
   sort() {
     if (this.queryString.sort) {
-      this.query = this.query.sort(this.queryString.sort.split(',').join(' '));
+      if (this.queryString.sort === 'newest') {
+        this.query = this.query.sort('-createdAt');
+      } else if (this.queryString.sort === 'oldest') {
+        this.query = this.query.sort('createdAt');
+      } else {
+        this.query = this.query.sort(this.queryString.sort.split(',').join(' '));
+      }
     } else {
       this.query = this.query.sort('-createdAt');
     }
+  
     return this;
   }
 

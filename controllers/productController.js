@@ -11,6 +11,7 @@ const deleteImage = require('../utils/delOrphanImgs');
 const validateImages = require('../utils/ImgValidation');
 const ProductAttribute = require('../models/productAttributeModel');
 const APIFeatures = require('../utils/APIFeatures');
+const Category = require('../models/CategoryModel');
 
 // On ensuring that only approved vendors can add products
 exports.vendorGuard = (req, res, next) => {
@@ -164,6 +165,44 @@ exports.getAllProducts = async (req, res, next) => {
   try {
     const isLatest = req.query.limit && !req.query.page;
 
+    if (req.query.category) {
+      const categoryIds = req.query.category.split(',');
+
+      const childCategories = await Category.find({
+        parent: { $in: categoryIds }
+      });
+
+      const allCategoryIds = [
+        ...categoryIds,
+        ...childCategories.map(c => c._id.toString())
+      ];
+
+      req.query.category = { $in: allCategoryIds };
+    }
+
+    if (req.query.search) {
+      const search = req.query.search;
+
+      const matchedCategories = await Category.find({
+        name: { $regex: search, $options: 'i' }
+      });
+
+      if (matchedCategories.length > 0) {
+        const categoryIds = matchedCategories.map(c => c._id.toString());
+
+        if (req.query.category) {
+          const existing = req.query.category.split(',');
+          req.query.category = {
+            $in: [...existing, ...categoryIds]
+          };
+        } else {
+          req.query.category = {
+            $in: categoryIds
+          };
+        }
+      }
+    }
+
     const features = new APIFeatures(
       Products.find({ visibility: 'published' })
       .populate('vendorId', 'storeName logo'),
@@ -215,6 +254,24 @@ exports.getAllProducts = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Failed to get products', error);
+    next(error);
+  }
+};
+
+// On getting products by brands
+exports.getAllBrands = async (req, res, next) => {
+  try {
+    const brands = await Products.distinct('brand', {
+      visibility: 'published'
+    });
+
+    res.status(200).json({
+      status: 'success',
+      results: brands.length,
+      brands
+    });
+  } catch {
+    console.error('Failed to fetch brands', error);
     next(error);
   }
 };
