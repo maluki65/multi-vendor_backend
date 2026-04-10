@@ -258,6 +258,76 @@ exports.getAllProducts = async (req, res, next) => {
   }
 };
 
+// On getting featured products
+exports.getFeaturedProducts = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+
+    const products = await Products.find({
+      visibility: 'published',
+      featured: true
+    }).populate('vendorId', 'storeName logo');
+
+    // On deterministic shuffling products based on date
+    const seed = new Date().toISOString().slice(0, 10);
+
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash * 31 + str.charCodeAt(i)) % 1000000007;
+      }
+      return hash;
+    }
+
+    function seededShuffle(array, seedStr) {
+      const arr = [...array];
+      let seedNum = hashString(seedStr);
+
+      for (let i = arr.length - 1; i > 0; i--) {
+        seedNum = (seedNum * 9301 + 49297) % 233280;
+        const rand = seedNum / 233280;
+
+        const j = Math.floor(rand * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+
+      return arr;
+    }
+
+    const shuffled = seededShuffle(products, seed);
+
+    const selected = shuffled.slice(0, limit);
+
+    const productIds = selected.map(p => p._id);
+
+    const allAttributes = await ProductAttribute
+      .find({ productId: { $in: productIds } })
+      .populate('attributeId', 'name type');
+
+    const grouped = {};
+    allAttributes.forEach(attr => {
+      const id = attr.productId.toString();
+      if (!grouped[id]) grouped[id] = [];
+      grouped[id].push(attr);
+    });
+
+    const finalProducts = selected.map(p => ({
+      ...p.toObject(),
+      attributes: grouped[p._id] || []
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      results: finalProducts.length,
+      products: finalProducts,
+      rotationSeed: seed
+    });
+  } catch (error) {
+    console.error('Failed to get featured products', error);
+    next(error);
+  }
+};
+
 // On getting products by brands
 exports.getAllBrands = async (req, res, next) => {
   try {
