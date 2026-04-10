@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const userSchema = mongoose.Schema({
   UUID: { type: String, unique: true, index: true, required: true },
   storeName: { type: String, unique: true, trim: true, required: false, default: 'None', index: true },
-  storeSlug: { type: String, unique: true, index: true },
+  storeSlug: { type: String, unique: true, sparse: true, index: true },
 
   email: { type: String, required: [true, 'Email is required'], unique: true, lowercase: true, trim:true },
   username: { type: String, required:false, default: 'None', index: true  },

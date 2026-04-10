@@ -61,7 +61,6 @@ exports.createProduct = async (req, res, next ) => {
       quantity,
       brand,
       discount,
-      featured,
       attributes = [],
     } = req.body;
 
@@ -104,7 +103,8 @@ exports.createProduct = async (req, res, next ) => {
       quantity,
       attributes,
       brand,
-      featured,
+      featured: false,
+      sponsored: false,
       discountPrice: discountPriceInCents,
 
       MainIMg,
