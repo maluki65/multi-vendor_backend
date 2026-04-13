@@ -441,6 +441,45 @@ exports.getProductById =  async (req, res, next ) => {
   }
 };
 
+// On geting product by slugId
+exports.getProductBySlugId = async(req, res, next) => {
+  try {
+    const { slugId } = req.params;
+
+    const id = slugId.split('-').pop();
+
+    //console.log('slugId:', slugId);
+    //console.log('extracted id:', id); 
+
+    const product = await Products
+     .findById(id)
+     .populate('vendorId', 'storeName logo')
+     .populate('category', 'name parent')
+     .populate({
+      path: 'reviews',
+      populate: {
+        path: 'userId',
+        select: 'name profileImage'
+      }
+    });
+
+    if (!product) return next(new createError('Product not found!', 404));
+
+    const attributes = await ProductAttribute.find({
+      productId: product._id
+    }).populate('attributeId', 'name type');
+
+    res.status(200).json({
+      status: 'success',
+      product,
+      attributes
+    });
+  } catch (error) {
+    console.error('Failed to get product', error);
+    next(error);
+  }
+};
+
 // On getting pendingProducts
 exports.getPendingProducts = async (req, res, next) => {
   try {
@@ -460,6 +499,7 @@ exports.getPendingProducts = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // On approving products
 exports.approveProducts = async (req, res, next) => {

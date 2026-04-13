@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('../utils/slugify');
+const nanoid = require('nanoid');
 
 const productSchema = new mongoose.Schema({
   vendorId: {
@@ -14,6 +15,12 @@ const productSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  shortId: {
+    type: String,
+    unique: true,
+    index: true,
+  },
+
   name:{ type: String, required: true, index: true },
   slug: { type: String, index: true },
   discount: { type: Number},
@@ -100,7 +107,7 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, featured: -1, brand: -1, sponsored: -1, createdAt: -1 });
+productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, featured: -1, brand: -1, sponsored: -1, shortId: -1, createdAt: -1 });
 
 productSchema.index({
   name: 'text',
@@ -112,6 +119,13 @@ productSchema.index({
 productSchema.pre('save', function(next) {
   if(this.isModified('name')) {
     this.slug = slugify(this.name, {lower: true });
+  }
+  next();
+});
+
+productSchema.pre('save', function (next) {
+  if (!this.shortId) {
+    this.shortId = nanoid(6);
   }
   next();
 });
