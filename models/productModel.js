@@ -61,7 +61,8 @@ const productSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CategoryAttribute'
       },
-      name: String,
+      name: [String],
+      default: [],
       value: mongoose.Schema.Types.Mixed
     }
   ],
