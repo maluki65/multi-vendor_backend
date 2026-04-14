@@ -453,7 +453,10 @@ exports.getProductBySlugId = async(req, res, next) => {
 
     const product = await Products
      .findById(id)
-     .populate('vendorId', 'storeName logo')
+     .populate({
+      path: 'vendorId',
+      select: 'logo banner verification store.description businessInfo.legalName'
+     })
      .populate('category', 'name parent')
      .populate({
       path: 'reviews',
