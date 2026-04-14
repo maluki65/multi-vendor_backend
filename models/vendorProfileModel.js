@@ -48,7 +48,7 @@ const vendorProfileSchema = new mongoose.Schema({
   },
 
   verification: {
-    isverified: { type: Boolean, default: false },
+    isverified: { type: Boolean, default: true },
     verified: Date
   },
 

@@ -448,14 +448,11 @@ exports.getProductBySlugId = async(req, res, next) => {
 
     const id = slugId.split('-').pop();
 
-    //console.log('slugId:', slugId);
-    //console.log('extracted id:', id); 
-
     const product = await Products
      .findById(id)
      .populate({
       path: 'vendorId',
-      select: 'logo banner verification store.description businessInfo.legalName'
+      select: 'logo banner store.addresses.country store.description verification.isverified businessInfo.legalName'
      })
      .populate('category', 'name parent')
      .populate({
@@ -468,6 +465,10 @@ exports.getProductBySlugId = async(req, res, next) => {
 
     if (!product) return next(new createError('Product not found!', 404));
 
+    const productCount = await Products.countDocuments({
+      vendorId: product.vendorId._id
+    });
+
     const attributes = await ProductAttribute.find({
       productId: product._id
     }).populate('attributeId', 'name type');
@@ -475,7 +476,8 @@ exports.getProductBySlugId = async(req, res, next) => {
     res.status(200).json({
       status: 'success',
       product,
-      attributes
+      attributes,
+      productCount
     });
   } catch (error) {
     console.error('Failed to get product', error);
