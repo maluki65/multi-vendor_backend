@@ -3,6 +3,40 @@ const createError = require('../utils/appError');
 const Product = require('../models/productModel');
 const Order = require('../models/orderModel');
 
+const calculateTotalItems = (cart) => {
+  if(!cart || !cart.items) return 0;
+
+  return cart.items.reduce((total, item) => 
+  total + item.quantity, 0);
+};
+
+const normalizeCartByVendor = (cart) => {
+  if (!cart || !cart.items) return { vendors: [] };
+
+  const grouped = {};
+
+  for (const item of cart.items) {
+    const vid = item.vendorId.toString();
+
+    if (!grouped[vid]) {
+      grouped[vid] = {
+        vendorId: item.vendorId,
+        vendorName: item.businessInfo?.legalName || 'vendor',
+        items: [],
+        vendorTotal: 0
+      };
+    }
+
+    grouped[vid].items.push(item);
+
+    grouped[vid].vendorTotal += item.price * item.quantity;
+  }
+
+  return {
+    vendors: Object.values(grouped)
+  };
+};
+
 // On creating a cart 
 exports.AddToCart = async (req, res, next) => {
   try{
@@ -31,7 +65,9 @@ exports.AddToCart = async (req, res, next) => {
         items: [ snapshop ]
       });
     } else {
-      const item = cart.items.find(i => i.productId.toString() === productId);
+      const item = cart.items.find(
+        i => i.productId.toString() === productId.toString()
+      );
 
       if (item) {
         item.quantity += quantity;
@@ -43,12 +79,17 @@ exports.AddToCart = async (req, res, next) => {
       await cart.save();
     }
 
+    const totalItems = calculateTotalItems(cart);
+    const groupedCart = normalizeCartByVendor(cart);
+
     res.status(200).json({
       status:'success',
-      cart
+      cart: groupedCart,
+      totalItems
     });
 
   } catch (error){
+    console.error('Failed to add product to cart!');
     next(error);
   }
 };
@@ -58,13 +99,18 @@ exports.getCart = async (req, res, next) => {
   try {
     const buyerId = req.user.id;
 
-    const cart = await Cart.findOne({ buyerId });
+    const cart = await Cart.findOne({ buyerId }) || { items: [] };
+
+    const totalItems = calculateTotalItems(cart);
+    const groupedCart = normalizeCartByVendor(cart);
 
     res.status(200).json({ 
       status: 'success',
-      cart
+      cart: groupedCart,
+      totalItems
     });
   } catch (error) {
+    console.error('Failed to get cart!');
     next(error);
   }
 };
@@ -80,12 +126,12 @@ exports.updateCartQuantity = async (req, res, next) => {
     }
 
     const cart =  await Cart.findOne({ buyerId });
-    if (!cart) return next(new createError('Cart not found', 404));
+    if (!cart) return next(new createError('Product in cart not found', 404));
 
-    const item = cart.items.find(i => i.productId.toString() === productId);
-    if (!item) return next(new createError('Product not in cart', 404));
+    const item = cart.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return next(new createError('Product in cart not found', 404));
 
-    // If quantity is 0, reove item from cart
+    // If quantity is 0, remove item from cart
     if (quantity === 0) {
       cart.items = cart.items.filter( i => i.productId.toString() !== productId);
     } else {
@@ -101,6 +147,7 @@ exports.updateCartQuantity = async (req, res, next) => {
     });
 
   } catch(error) {
+    console.error('Failed to update product quantity from cart!', error);
     next(error);
   }
 };
@@ -123,6 +170,7 @@ exports.removeFromCart = async (req, res, next) => {
     });
 
   } catch(error) {
+    console.error('Failed to remove product from cart!', error);
     next(error);
   }
 };

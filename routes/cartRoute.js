@@ -6,16 +6,16 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const router = express.Router();
 
 // On POST routes
-router.post('/cart/add', protect, restrictTo('Buyer'), AddToCart);
+router.post('/add', protect, restrictTo('Buyer'), AddToCart);
 
 
 // On GET routes
-router.get('/cart', protect, restrictTo('Buyer'), getCart);
+router.get('/', protect, restrictTo('Buyer'), getCart);
 
 // On PUT routes
-router.put('/cart/updateQuantity', protect, restrictTo('Buyer'), updateCartQuantity);
+router.put('/update', protect, restrictTo('Buyer'), updateCartQuantity);
 
 // On DELETE routes
-router.delete('/cart/deleteProduct/:productId', protect, restrictTo('Buyer'), removeFromCart);
+router.delete('/delete/:productId', protect, restrictTo('Buyer'), removeFromCart);
 
 module.exports = router;
