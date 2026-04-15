@@ -95,6 +95,14 @@ const productSchema = new mongoose.Schema({
 
   rejectionReason: { type: String, default: '' },
 
+  ratingCounts: {
+    1: { type: Number, default: 0 },
+    2: { type: Number, default: 0 },
+    3: { type: Number, default: 0 },
+    4: { type: Number, default: 0 },
+    5: { type: Number, default: 0 },
+  },
+
   reviews: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -140,14 +148,26 @@ productSchema.statics.updateAverageRating = async function (productId) {
       $group: {
         _id: '$productId',
         avgRating: { $avg: '$rating' },
-        totalReviews: { $sum: 1 }
+        totalReviews: { $sum: 1 },
+        ratings: {
+          $push: '$rating'
+        }
       }
     }
   ]);
 
+  let ratingCounts = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+  if (stats.length) {
+    stats[0].ratings.forEach(r => {
+      ratingCounts[r] += 1;
+    });
+  }
+
   await this.findByIdAndUpdate(productId, {
     averageRating: stats.length ? stats[0].avgRating : 0,
-    totalReviews: stats.length ? stats[0].totalReviews : 0
+    totalReviews: stats.length ? stats[0].totalReviews : 0,
+    ratingCounts
   });
 };
 

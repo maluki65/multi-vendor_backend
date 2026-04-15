@@ -13,11 +13,27 @@ const reviewSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  rating: { type: Number, required: true, min: 1, max: 5, index: true },
-  comment: { type : String, trim: true },
+  rating: { 
+    type: Number, 
+    required: true, 
+    min: 1, 
+    max: 5, 
+    index: true 
+  },
+  comment: { 
+    type : String, 
+    trim: true 
+  },
+
+  verifiedPurchase: {
+    type: Boolean,
+    default: false
+  },
+
   createdAt: { type: Date, default: Date.now },
 })
 
-reviewSchema.index({ productId: 1, userId:1, rating: 1, createdAt: -1 });
+reviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
+reviewSchema.index({ productId: 1, rating: 1 });
 
 module.exports = mongoose.model('Reviews', reviewSchema);

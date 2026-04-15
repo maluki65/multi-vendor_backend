@@ -681,59 +681,6 @@ exports.deleteProduct = async (req, res, next) => {
   }
 }
 
-// On posting a review for a product (Buyer)
-/*exports.postReview = async (req, res, next ) => {
-  try {
-    const userId = req.user.id;
-    const { productId } = req.params;
-    const { rating, comment } = req.body;
-
-    const product = await Products.findById(productId);
-    if(!product) return next( new createError('Product not found!', 404));
-
-    const review = await Reviews.create({ 
-      productId, 
-      userId, 
-      rating, 
-      comment 
-    });
-
-    product.reviews.push(review._id);
-    await product.save();
-
-    await Products.updateAverageRating(productId);
-
-    res.status(201).json({ 
-      status: 'success', 
-      review 
-    });
-  } catch (error) {
-    console.error('Failed to add review', error);
-    next(error);
-  }
-};
-
-// On getting a review for product (Buyer)
-exports.getProductReviews = async (req, res, next ) => {
-  try {
-    const { productId } = req.params;
-
-    const reviews = await Reviews
-     .find({ productId })
-     .populate('userId', 'name profileImage')
-     .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      status: 'success',
-      results: reviews.length, 
-      reviews
-    });
-  } catch (error) {
-    console.error('Failed to get product review', error);
-    next(error);
-  }
-};*/
-
 // On updating product quantity after complete order
 exports.updateProductQuantity = async (productId, quantityOrdered) => {
   const product = await Products.findByIdAndUpdate(
@@ -745,6 +692,47 @@ exports.updateProductQuantity = async (productId, quantityOrdered) => {
 
   if(product.quantity < 5 ){
     console.log(`Low stock alert for product: ${product.name} (Qty: ${product.quantity})`);
+  }
+}
+
+// On getting related products
+exports.getSimilarProducts = async (req, res, next) => {
+  try{
+    const { productId } = req.params;
+    
+    const product = await Products.findById(productId)
+     .populate('category', 'parent');
+    
+    if (!product) {
+     return next(new createError('Product not found', 404));
+    }
+
+    const categoryId = product.category?._id;
+    const parentId = product.category?.parent;
+
+    const categoryFilter = [categoryId];
+
+    if (parentId) {
+      categoryFilter.push(parentId);
+    }
+
+    const similarProducts = await Products.find({
+      _id: { $ne: productId },
+      visibility: 'published',
+      category: { $in: categoryFilter }
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name price MainIMg slug averageRating totalReviews sponsored description discount discountPrice');
+
+    res.status(200).json({
+      status: 'success',
+      count: similarProducts.length,
+      products: similarProducts
+    });
+  } catch (error) {
+    console.error('Failed to get similar products', error);
+    next(error);
   }
 }
 
