@@ -1,5 +1,5 @@
 const express = require('express');
-const { AddToCart, getCart, updateCartQuantity, removeFromCart } = require('../controllers/cartController');
+const { AddToCart, getCart, updateCartQuantity, removeFromCart, clearCart } = require('../controllers/cartController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 
@@ -14,6 +14,7 @@ router.get('/', protect, restrictTo('Buyer'), getCart);
 
 // On PUT routes
 router.put('/update', protect, restrictTo('Buyer'), updateCartQuantity);
+router.put('/clear', protect, restrictTo('Buyer'), clearCart);
 
 // On DELETE routes
 router.delete('/delete/:productId', protect, restrictTo('Buyer'), removeFromCart);

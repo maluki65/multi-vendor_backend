@@ -156,7 +156,7 @@ exports.updateCartQuantity = async (req, res, next) => {
 exports.removeFromCart = async (req, res, next) => {
   try{
     const buyerId = req.user.id;
-    const { productId } = req.body;
+    const { productId } = req.params;
 
     const cart = await Cart.findOneAndUpdate(
       { buyerId },
@@ -171,6 +171,33 @@ exports.removeFromCart = async (req, res, next) => {
 
   } catch(error) {
     console.error('Failed to remove product from cart!', error);
+    next(error);
+  }
+};
+
+
+// On clearing cart
+exports.clearCart = async (req, res, next) => {
+  try {
+    const buyerId = req.user.id;
+
+    const cart = await Cart.findOne({ buyerId });
+
+    if (!cart) {
+      return next(new createError('Cart not found', 404));
+    }
+
+    cart.vendors = [];
+    cart.items = []; 
+    await cart.save();
+
+    res.status(200).json({
+      status: 'success',
+      cart,
+      totalItems: 0
+    });
+  } catch (error) {
+    console.error('Failed to clear cart!', error);
     next(error);
   }
 };
