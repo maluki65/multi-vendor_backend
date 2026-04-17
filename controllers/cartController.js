@@ -2,6 +2,7 @@ const Cart = require('../models/cartModel');
 const createError = require('../utils/appError');
 const Product = require('../models/productModel');
 const Order = require('../models/orderModel');
+const { calculateCartPricing } = require('../utils/pricing/cartPricing');
 
 const calculateTotalItems = (cart) => {
   if(!cart || !cart.items) return 0;
@@ -99,15 +100,24 @@ exports.getCart = async (req, res, next) => {
   try {
     const buyerId = req.user.id;
 
+    const { county, area } = req.query;
+
+    const location = county ?  { county, area } : null;
+
     const cart = await Cart.findOne({ buyerId }) || { items: [] };
 
     const totalItems = calculateTotalItems(cart);
     const groupedCart = normalizeCartByVendor(cart);
 
+    const pricing = calculateCartPricing(cart, location);
+
+    const hasLocation = !!county;
+
     res.status(200).json({ 
       status: 'success',
       cart: groupedCart,
-      totalItems
+      totalItems,
+      pricing: hasLocation ? pricing : null
     });
   } catch (error) {
     console.error('Failed to get cart!');
