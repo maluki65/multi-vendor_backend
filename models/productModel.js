@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('../utils/slugify');
-const nanoid = require('nanoid');
+//const nanoid = require('nanoid');
 
 const productSchema = new mongoose.Schema({
   vendorId: {
@@ -132,12 +132,12 @@ productSchema.pre('save', function(next) {
   next();
 });
 
-productSchema.pre('save', function (next) {
+/*productSchema.pre('save', function (next) {
   if (!this.shortId) {
     this.shortId = nanoid(6);
   }
   next();
-});
+});*/
 
 productSchema.statics.updateAverageRating = async function (productId) {
   const Review = mongoose.model('Reviews');
