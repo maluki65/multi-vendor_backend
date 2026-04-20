@@ -30,7 +30,9 @@ const normalizeCartByVendor = (cart) => {
 
     grouped[vid].items.push(item);
 
-    grouped[vid].vendorTotal += item.price * item.quantity;
+    const unitPrice = item.discount > 0 ? item.discountPrice : item.price;
+
+    grouped[vid].vendorTotal += unitPrice * item.quantity;
   }
 
   return {
@@ -54,7 +56,11 @@ exports.AddToCart = async (req, res, next) => {
       name: product.name,
       price: product.price,
       image: product.MainIMg,
-      vendorId: product.vendorId
+      vendorId: product.vendorId,
+      discount: product.discount,
+      discountPrice: product.discountPrice,
+      description: product.description,
+      productQuantity: product.quantity,
     };
 
     let cart = await Cart.findOne({ buyerId });

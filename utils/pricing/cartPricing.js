@@ -9,7 +9,8 @@ const calculateCartPricing = (cart, location) => {
   const processedVendors = new Set();
 
   for (const item of cart.items) {
-    const itemTotal = item.price * item.quantity;
+    const unitPrice = item.discount > 0 ? item.discountPrice : item.price
+    const itemTotal = unitPrice * item.quantity;
 
     subtotal += itemTotal;
 

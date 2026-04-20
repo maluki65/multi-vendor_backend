@@ -18,6 +18,10 @@ const cartItemSchema = new mongoose.Schema({
   name: String,
   price: Number,
   image: String,
+  description: String,
+  productQuantity: Number,
+  discount: Number,
+  discountPrice: Number,
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendorProfile',
