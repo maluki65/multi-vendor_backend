@@ -8,7 +8,7 @@ const categorySchema = new mongoose.Schema({
     required: true, 
     default: 0.05, 
     min: 0, 
-    max:1, 
+    max:10, 
     index: true 
   },
 

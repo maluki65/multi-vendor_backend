@@ -7,71 +7,98 @@ const checkoutItemSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  // On snapshot
-  name: String,
-  price: Number,
-  quantity: Number,
+
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendorProfile',
     required: true,
+    index: true,
   },
+
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true,
+    index: true
+  },
+
+  name: String,
   image: String,
-}, {_id: false});
+
+  discount: Number,
+  basePrice: Number,
+  finalPrice: Number,
+  quantity: Number,
+
+  commissionRate: Number,
+  commissionAmount: Number,
+}, {_id: false });
+
+const vendorBreakDownSchema = new mongoose.Schema({
+  vendorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VendorProfile',
+  },
+
+  subtotal: Number,
+  commission: Number,
+  payout: Number,
+}, { _id: false });
 
 const checkoutSessionSchema = new mongoose.Schema({
   buyerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Users',
     required: true,
-    required: true,
     index: true,
   },
 
-  // snapshot of cart items at moment of checkout
-  items: [checkoutItemSchema],
-  totalAmount: {
-    type:Number,
-    required: true,
+  pricing: {
+    subtotal: Number,
+    tax:Number,
+    shipping: Number,
+    total: Number,
   },
-  vendorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'VendorProfile',
-    required: true,
-    index: true,
+
+  commissionSummary: {
+    totalCommission: Number,
   },
-  shippindAddress:{
+
+  shipingAddress: {
     type: String,
     required: true,
   },
-  paymentMethod:{
+
+  paymentMethod: {
     type: String,
     enum: ['m-pesa'],
     default: 'm-pesa',
   },
-  paymentStatus:{
+
+  paymentStatus: {
     type: String,
     enum: ['pending', 'processing', 'failed', 'completed'],
     default: 'pending',
     index: true,
   },
 
-  mpesaCheckoutRequestID:{ type: String }, // returned by m-pesa STK
-  mpesaMerchantRequestId: { type: String },
-  mpesaReceiptNumber: { type: String },
-  mpesaResultsDescription:{ type: String },
-
-  // On whether the order has been created from this session
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref:'Order',
+    ref: 'Order',
   },
 
   expiresAt: {
     type: Date,
+    required: true,
   },
-}, {timestamps: true });
 
-checkoutSessionSchema.index({ 'items.productId': 1, buyerId: 1, vendorId: 1, paymentStatus: 1}, { expiresAt: 1 }, { expireAfterSeconds: 0 });
+  items: [checkoutItemSchema],
+  vendors: [vendorBreakDownSchema],
+}, { timestamps: true });
 
-module.exports = mongoose.model( 'CheckoutSession', checkoutSessionSchema);
+checkoutSessionSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
+
+module.exports = mongoose.model('CheckoutSession', checkoutSessionSchema);

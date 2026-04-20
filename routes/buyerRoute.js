@@ -1,5 +1,4 @@
 const express = require('express');
-const { startCheckout, cancelCheckoutSession } = require('../controllers/checkoutController');
 const { createReview, getProductReviews, updateReview, deleteReview  } = require('../controllers/reviewController');
 const { getUserInfo, updateUserSettings, getProductsByVendor, getProductsByCategory, getRecommendedProducts,searchProduct, getBuyerProfile, createBuyerProfile, updateBuyerProfile, updateBuyerAvatar } = require('../controllers/buyerController');
 const { getAllProducts, getSmartRecomendations, getAllBrands, getSimilarProducts } = require('../controllers/productController');
@@ -9,8 +8,6 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const router = express.Router();
 
 // On POST routes
-router.post('/checkout/start', protect, restrictTo('Buyer'), startCheckout);
-router.post('/checkout/cancel/:id', protect, restrictTo('Buyer'), cancelCheckoutSession);
 router.post('/reviews/:productId', protect, restrictTo('Buyer'), createReview);
 router.post('/profile', protect, restrictTo('Buyer'), createBuyerProfile);
 
