@@ -64,9 +64,15 @@ const checkoutSessionSchema = new mongoose.Schema({
     totalCommission: Number,
   },
 
-  shipingAddress: {
-    type: String,
-    required: true,
+  shippingAddress: {
+    county: {
+      type: String,
+      required: true,
+    },
+    area: {
+      type: String,
+      required: true,
+    },
   },
 
   paymentMethod: {

@@ -28,6 +28,10 @@ exports.prepareCheckOut = async (req, res, next) => {
     const buyerId = req.user.id;
     const { county, area } = req.body;
 
+    if (!county || !area) {
+      return next(new createError('Shipping address is required!', 400));
+    }
+
     // on validating cart
     const cart = await Cart.findOne({ buyerId });
 
@@ -154,7 +158,10 @@ exports.prepareCheckOut = async (req, res, next) => {
       buyerId,
       items: snapShotItems,
       vendors,
-      shippingAddress: `${county} - ${area}`,
+      shippingAddress:{
+        county,
+        area,
+      },
       pricing: {
         subtotal,
         tax,
@@ -181,11 +188,11 @@ exports.prepareCheckOut = async (req, res, next) => {
 
 exports.getCheckoutSession = async (req, res, next) => {
   try{
-    const { id } = req.params;
+    const { sessionId } = req.params;
 
-    const sessionId = await CheckoutSession.findById(id);
+    const session = await CheckoutSession.findById(sessionId);
 
-    if (!sessionId) {
+    if (!session || session.expiresAt < new Date()) {
       return next(new createError('Checkout session expired or not found', 404));
     }
 
@@ -250,7 +257,7 @@ exports.startCheckout = async (req, res, next) => {
         items: snapshotItems,
         totalAmount,
         paymentStatus: 'pending',
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10mins
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 10mins
       });
 
       sessions.push(session);
