@@ -77,7 +77,7 @@ const checkoutSessionSchema = new mongoose.Schema({
 
   paymentMethod: {
     type: String,
-    enum: ['m-pesa'],
+    enum: ['m-pesa','visa'],
     default: 'm-pesa',
   },
 
@@ -85,6 +85,13 @@ const checkoutSessionSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'processing', 'failed', 'completed'],
     default: 'pending',
+    index: true,
+  },
+
+  status: {
+    type: String,
+    enum: ['active', 'expired', 'completed', 'cancelled'],
+    default: 'active',
     index: true,
   },
 

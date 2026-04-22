@@ -3,6 +3,7 @@ const Product = require('../models/productModel');
 const CheckoutSession = require('../models/checkoutSessionModel');
 const createError = require('../utils/appError');
 const Category = require('../models/CategoryModel');
+const { getShippingFee } = require('../utils/pricing/shipping');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -151,7 +152,7 @@ exports.prepareCheckOut = async (req, res, next) => {
     const vendors = Object.values(vendorMap);
 
     const tax = Math.round(subtotal * 0.16);
-    const shipping = 0; // add location later
+    const shipping = getShippingFee({ county, area });
     const total = subtotal + tax + shipping;
 
     const session = await CheckoutSession.create({
@@ -171,7 +172,7 @@ exports.prepareCheckOut = async (req, res, next) => {
       commissionSummary: {
         totalCommission,
       },
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
     res.status(200).json({
@@ -190,10 +191,21 @@ exports.getCheckoutSession = async (req, res, next) => {
   try{
     const { sessionId } = req.params;
 
-    const session = await CheckoutSession.findById(sessionId);
+    const session = await CheckoutSession.findById(sessionId)
+      .populate('items.vendorId', 'businessInfo.legalName logo banner')
+      .populate('vendors.vendorId', 'businessInfo.legalName logo banner');
 
-    if (!session || session.expiresAt < new Date()) {
-      return next(new createError('Checkout session expired or not found', 404));
+    if (!session) {
+      return next(new createError('Checkout not found', 404));
+    }
+
+    if (session.expiresAt < new Date()) {
+      if (session.status !== 'expired') {
+        session.status = 'expired';
+        await session.save();
+      }
+
+      return next(new createError('Checkout session expired!', 400));
     }
 
     res.status(200).json({
@@ -206,10 +218,63 @@ exports.getCheckoutSession = async (req, res, next) => {
   }
 }
 
+exports.getAllCheckoutSessions = async (req, res, next) => {
+  try{
+    const buyerId = req.user.id;
+
+    const sessions = await CheckoutSession.find({ buyerId })
+      .sort({ createdAt: -1 })
+      .select('pricing status paymentStatus expiresAt createdAt');
+
+    res.status(200).json({
+      status: 'succes',
+      result: sessions.length,
+      sessions,
+    });
+  } catch (error) {
+    console.error('Failed to get checkout sessions', error);
+    next(error);
+  }
+}
+
+exports.resumeCheckout = async (req, res, next) => {
+  try { 
+    const buyerId = req.user.id;
+    const { sessionId } = req.params;
+
+    const session = await CheckoutSession.findOne({
+      _id: sessionId,
+      buyerId,
+    });
+
+    if (!session) {
+      return next(new createError('Checkout not found', 404));
+    }
+
+    if (session.status === 'completed'){
+      return next(new createError('Checkout already completed'),400);
+    }
+
+    if (session.expiresAt < new Date()) {
+      session.status = 'active';
+      session.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await session.save();
+    }
+
+    res.status(200).json({
+      status: 'status',
+      session,
+    });
+  } catch (error) {
+    console.error('Failed to resume checkout', error);
+    next(error);
+  }
+};
+
 // On checkout sessions
 exports.startCheckout = async (req, res, next) => {
   try{
-    const buyerId =req.user.id;
+    const buyerId = req.user.id;
     const { shippingAddress } = req.body;
 
     const cart = await Cart.findOne({ buyerId })
@@ -257,7 +322,7 @@ exports.startCheckout = async (req, res, next) => {
         items: snapshotItems,
         totalAmount,
         paymentStatus: 'pending',
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 10mins
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });
 
       sessions.push(session);

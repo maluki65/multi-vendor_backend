@@ -205,7 +205,7 @@ exports.getAllProducts = async (req, res, next) => {
 
     const features = new APIFeatures(
       Products.find({ visibility: 'published' })
-      .populate('vendorId', 'storeName logo'),
+      .populate('vendorId', 'storeName logo businessInfo.legalName'),
       req.query
     )
       .filter()
