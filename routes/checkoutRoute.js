@@ -11,6 +11,6 @@ router.get('/session/:sessionId', protect, restrictTo('Buyer'), getCheckoutSessi
 
 router.get('/sessions', protect, restrictTo('Buyer'), getAllCheckoutSessions);
 
-router.put('/resume/:sessionId', protect, restrictTo('Buyer'), resumeCheckout);
+router.patch('/resume/:sessionId', protect, restrictTo('Buyer'), resumeCheckout);
 
 module.exports = router;

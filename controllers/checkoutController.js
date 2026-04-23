@@ -197,7 +197,10 @@ exports.getCheckoutSession = async (req, res, next) => {
       .populate('vendors.vendorId', 'businessInfo.legalName logo banner');
 
     if (!session) {
-      return next(new createError('Checkout not found', 404));
+      return res.status(200).json({
+        status: 'success',
+        session: null,
+      });
     }
 
     if (session.expiresAt < new Date()) {
