@@ -6,7 +6,7 @@ const zones = [
   },
   {
     name: 'Nairobi Metro',
-    counties: ['Nairobi', 'Kiambu'],
+    counties: ['Kiambu'],
     fee: 20000 // in cents
   },
   {

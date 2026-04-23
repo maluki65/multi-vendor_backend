@@ -3,7 +3,7 @@ const Product = require('../models/productModel');
 const CheckoutSession = require('../models/checkoutSessionModel');
 const createError = require('../utils/appError');
 const Category = require('../models/CategoryModel');
-const { getShippingFee } = require('../utils/pricing/shipping');
+const { buildPricing } = require('../utils/pricing/service');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -66,8 +66,8 @@ exports.prepareCheckOut = async (req, res, next) => {
 
     // on validating and building snapshot
     const snapShotItems = [];
-    let subtotal = 0;
     let totalCommission = 0;
+    const normalizedItems = [];
 
     for (const item of cart.items) {
       const product = productMap[item.productId.toString()];
@@ -100,9 +100,6 @@ exports.prepareCheckOut = async (req, res, next) => {
 
       const commissionAmount = Math.round(finalPrice * commissionRate);
 
-      const itemTotal = finalPrice * item.quantity;
-
-      subtotal += itemTotal
       totalCommission += commissionAmount * item.quantity;
 
       snapShotItems.push({
@@ -122,6 +119,13 @@ exports.prepareCheckOut = async (req, res, next) => {
         commissionRate,
         commissionAmount,
       });
+
+      normalizedItems.push({
+        price: basePrice,
+        discount,
+        discountPrice: finalPrice,
+        quantity: item.quantity,
+      })
     }
 
     // on grouping by vendor
@@ -151,9 +155,10 @@ exports.prepareCheckOut = async (req, res, next) => {
 
     const vendors = Object.values(vendorMap);
 
-    const tax = Math.round(subtotal * 0.16);
-    const shipping = getShippingFee({ county, area });
-    const total = subtotal + tax + shipping;
+    const pricing = buildPricing({
+      items: normalizedItems,
+      location: { county, area },
+    });
 
     const session = await CheckoutSession.create({
       buyerId,
@@ -163,12 +168,8 @@ exports.prepareCheckOut = async (req, res, next) => {
         county,
         area,
       },
-      pricing: {
-        subtotal,
-        tax,
-        shipping,
-        total,
-      },
+      pricing,
+      
       commissionSummary: {
         totalCommission,
       },
