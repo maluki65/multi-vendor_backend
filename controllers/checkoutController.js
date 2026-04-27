@@ -290,7 +290,7 @@ exports.completeCheckout = async (req, res, next) => {
     if (session.status === 'completed')
       return next(new createError('Checkout already completed', 400));
 
-    // On simulating payment (Implement mpesa/ card payment in the future)
+    // On simulating payment (add mpesa && card payment  later)
 
     session.paymentStatus = 'completed';
     session.status = 'completed';

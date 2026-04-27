@@ -6,7 +6,7 @@ const { prepareCheckOut, getCheckoutSession, getAllCheckoutSessions, resumeCheck
 const router = express.Router();
 
 router.post('/prepare', protect, restrictTo('Buyer'), prepareCheckOut);
-router.post('/competed/:sessionId', protect, restrictTo('Buyer'), completeCheckout);
+router.post('/completed/:sessionId', protect, restrictTo('Buyer'), completeCheckout);
 
 router.get('/session/:sessionId', protect, restrictTo('Buyer'), getCheckoutSession);
 
