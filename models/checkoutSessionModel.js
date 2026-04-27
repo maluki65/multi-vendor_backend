@@ -95,10 +95,12 @@ const checkoutSessionSchema = new mongoose.Schema({
     index: true,
   },
 
-  orderId: {
+  orderIds: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
   },
+
+  paymentReference: String,
 
   expiresAt: {
     type: Date,

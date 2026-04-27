@@ -8,6 +8,7 @@ const orderItemSchema = new mongoose.Schema({
     index: true,
   },
   name: String,
+  image: String,
   price: Number,
   quantity: Number,
   commissionRate: { type: Number },
@@ -50,14 +51,25 @@ const orderSchema = new mongoose.Schema({
       date: { type: Date, default: Date.now },
     },
   ],
+
+  checkoutSessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CheckoutSession'
+  },
+
+  orderNumber: {
+    type: String,
+    unique: true,
+    index: true,
+  },
+
+  platformCommission:{ type: Number, index: true },
   totalAmount: { type: Number, required: true },
-  paymentProvider: { type: String },
-  paymentReference: { type: String },
+  paymentProvider: { type: String,  default: 'Simulated' },
+  paymentReference: { type: String,  default: 'Simulated' },
   vendorEarnings: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
-  mpesaReceipt: { type: String },
-  checkoutRequestId: { type: String },
-  merchantRequestId: { type: String },
+  mpesaReceipt: { type: String, default: 'Simulated' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });

@@ -4,6 +4,8 @@ const CheckoutSession = require('../models/checkoutSessionModel');
 const createError = require('../utils/appError');
 const Category = require('../models/CategoryModel');
 const { buildPricing } = require('../utils/pricing/service');
+const Order = require('../models/orderModel');
+const generateOrderNumber = require('../utils/generateOrderNumber');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -275,6 +277,81 @@ exports.resumeCheckout = async (req, res, next) => {
   }
 };
 
+exports.completeCheckout = async (req, res, next) => {
+  try{
+    const { sessionId } = req.params;
+    const buyerId = req.user.id;
+
+    const session = await CheckoutSession.findById(sessionId);
+
+    if(!session) 
+      return next(new createError('Checkout session ot found!', 404));
+
+    if (session.status === 'completed')
+      return next(new createError('Checkout already completed', 400));
+
+    // On simulating payment (Implement mpesa/ card payment in the future)
+
+    session.paymentStatus = 'completed';
+    session.status = 'completed';
+
+    const createdOrders = [];
+
+    for (const vendor of session.vendors) {
+      const vendorItems = session.items.filter(
+        item => item.vendorId.toString() === vendor.vendorId.toString()
+      );
+
+      const products = vendorItems.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.finalPrice,
+        quantity: item.quantity,
+        commissionRate: item.commissionRate,
+        commissionAmount: item.commissionAmount,
+        image: item.image,
+      }));
+
+      const orderNumber = await generateOrderNumber(Order);
+
+      const order = await Order.create({
+        orderNumber,
+
+        buyerId,
+        vendorId: vendor.vendorId,
+        products,
+
+        totalAmount: vendor.subtotal,
+        vendorEarnings: vendor.payout,
+        shippingAddress: `${session.shippingAddress.county}, ${session.shippingAddress.area}`,
+        
+        paymentStatus: 'completed',
+        orderStatus: 'processing',
+        platformCommission: vendor.commission,
+
+        paymentProvider: 'Simulated',
+        paymentReference: `SIM-${Date.now()}`,
+      });
+
+      createdOrders.push(order._id);
+    }
+
+    // On linking order to session
+    session.orderIds = createdOrders[0];
+    await session.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Payment successful & order created',
+      orders: createdOrders,
+    });
+  } catch (error){
+    console.error('Failed to create error', error);
+    next(error);
+  }
+};
+
+/*
 // On checkout sessions
 exports.startCheckout = async (req, res, next) => {
   try{
@@ -369,4 +446,4 @@ exports.cancelCheckoutSession = async (req, res, next) => {
   } catch(error) {
     next(error);
   }
-};
+};*/
