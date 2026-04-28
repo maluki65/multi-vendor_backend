@@ -285,7 +285,7 @@ exports.completeCheckout = async (req, res, next) => {
     const session = await CheckoutSession.findById(sessionId);
 
     if(!session) 
-      return next(new createError('Checkout session ot found!', 404));
+      return next(new createError('Checkout session not found!', 404));
 
     if (session.status === 'completed')
       return next(new createError('Checkout already completed', 400));
