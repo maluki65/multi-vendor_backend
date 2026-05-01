@@ -95,10 +95,12 @@ const checkoutSessionSchema = new mongoose.Schema({
     index: true,
   },
 
-  orderIds: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order',
-  },
+  orderIds: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+    }
+  ],
 
   paymentReference: String,
 

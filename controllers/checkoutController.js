@@ -321,6 +321,8 @@ exports.completeCheckout = async (req, res, next) => {
         vendorId: vendor.vendorId,
         products,
 
+        checkoutSessionId: session._id,
+
         totalAmount: vendor.subtotal,
         vendorEarnings: vendor.payout,
         shippingAddress: `${session.shippingAddress.county}, ${session.shippingAddress.area}`,
@@ -337,8 +339,13 @@ exports.completeCheckout = async (req, res, next) => {
     }
 
     // On linking order to session
-    session.orderIds = createdOrders[0];
+    session.orderIds = createdOrders;
     await session.save();
+
+    await Cart.findOneAndUpdate(
+      { buyerId },
+      { $set: { items: []}, updatedAt: Date.now()}
+    );
 
     res.status(200).json({
       status: 'success',

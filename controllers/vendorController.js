@@ -293,7 +293,7 @@ exports.getVendorStats = async (req, res, next) => {
 };
 
 // On getting vendor orders
-exports.getVendorOrders = async (req, res, next ) => {
+/*exports.getVendorOrders = async (req, res, next ) => {
   try {
     const vendorId = req.user.id;
     const orders = await Orders.find( { vendorId }).sort({ createdAt: -1 });
@@ -306,6 +306,7 @@ exports.getVendorOrders = async (req, res, next ) => {
     next(error);
   }
 };
+*/
 
 // On vendor getting all cancelled orders
 exports.getVendorCancelledOrders = async(req, res, next) => {

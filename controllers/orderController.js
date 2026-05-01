@@ -7,16 +7,21 @@ exports.getVendorOrders = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
+    /*const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
     if (!vendorProfile)
       return next (new createError('Vendor profile not found', 404));
 
-    const vendorId = vendorProfile._id;
+    const vendorId = vendorProfile._id;*/
     
-    const orders = await Order.find({ vendorId }).populate('buyerId', 'username email').populate('products.productId', 'name MainIMg price');
+    const orders = await Order.find({ vendorId });
 
-    res.status(200).json({ status: 'success', results: orders.length, orders });
+    res.status(200).json({ 
+      status: 'success', 
+      results: orders.length, 
+      orders 
+    });
   } catch (error) {
+    console.error('Failed to get vendor orders', error);
     next(error);
   }
 };
@@ -24,16 +29,15 @@ exports.getVendorOrders = async (req, res, next) => {
 // On admin getting all orders
 exports.getAllOrders = async(req, res, next) => {
   try {
-    const orders = await Order.find()
-    .populate('buyerId', 'username email')
-    .populate('vendorId', 'storeName email')
-    .populate('products.productId', 'name MainIMg price');
+    const orders = await Order.find();
 
     res.status(200).json({ 
       status: 'success',
-      results: orders.length, orders
+      results: orders.length, 
+      orders
     });
   } catch (error) {
+    console.error('Failed to get orders', error);
     next(error);
   }
 };
@@ -52,6 +56,7 @@ exports.getBuyerOrders = async ( req, res, next ) => {
       orders
     });
   } catch (error) {
+    console.error('Failed to get buyer orders', error);
     next(error);
   }
 };

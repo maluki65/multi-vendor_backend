@@ -10,13 +10,13 @@ const router = express.Router();
 router.post('/orders', protect, restrictTo('Buyer'), createOrder);
 
 // On geting orders
-router.get('/orders/vendor', protect, restrictTo('Vendor'), getVendorOrders);
+router.get('/vendor', protect, restrictTo('Vendor'), getVendorOrders);
 
 router.get('/order/:id', protect, getOrderbyId);
 
-router.get('/orders/buyer', protect, restrictTo('Buyer'), getBuyerOrders);
+router.get('/buyer', protect, restrictTo('Buyer'), getBuyerOrders);
 
-router.get('/orders/admin/all', protect, restrictTo('Admin'), getAllOrders);
+router.get('/admin/all', protect, restrictTo('Admin'), getAllOrders);
 
 
 router.get('/orders/buyer/cancelled', protect, restrictTo('Buyer'), getBuyerCancelledOrders);
