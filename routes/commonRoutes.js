@@ -4,6 +4,7 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const { deleteReview } = require('../controllers/reviewController');
 const { getProductById, getFeaturedProducts, getProductBySlugId } = require('../controllers/productController');
 const { getCategoryAttributes, getAllActiveCategories } = require('../controllers/categoryController');
+const { updatePassword } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -12,6 +13,8 @@ router.get('/category-Attributes/:categoryId', protect, restrictTo('Admin','Vend
 router.get('/categories', protect, restrictTo('Vendor', 'Admin', 'Buyer'), getAllActiveCategories);
 router.get('/products/featured', protect, restrictTo('Admin', 'Vendor', 'Buyer'), getFeaturedProducts);
 router.get('/product/slug/:slugId', protect, restrictTo('Admin', 'Vendor', 'Buyer'), getProductBySlugId);
+
+router.patch('/password/update', protect, restrictTo('Admin', 'Vendor', 'Buyer'), updatePassword);
 
 router.delete('/reviews/:reviewId', protect, restrictTo('Buyer', 'Admin'), deleteReview);
 

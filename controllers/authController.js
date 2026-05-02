@@ -194,6 +194,52 @@ exports.login =  async(req, res, next) => {
   }
 };
 
+// On updating passoword
+exports.updatePassword = async(req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    //console.log('currentPass', currentPassword);
+    //console.log('newPass:', newPassword);
+    //console.log('Id', userId);
+
+
+    const user = await User.findById(userId).select('+password +refreshTokenHash');
+
+    if (!user) return next(new createError('User does not exist / expired token', 404));
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if(!isPasswordValid) return next(new createError('Invalid current password!', 422));
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) return next(new createError('New password must be different', 400));
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    user.password = hashedPassword;
+    user.passwordChangedAt = Date.now() - 1000;
+
+    user.refreshTokenHash = null;
+
+    await user.save();
+
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+    res.clearCookie('csrfToken');
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully. Please log in again',
+      forceLogout: true,
+    });
+  } catch (error){
+    console.error('Failed to update password!', error);
+    next(error);
+  }
+}
+
 // On refresh token
 exports.refreshToken = async (req, res, next) => {
   try {
