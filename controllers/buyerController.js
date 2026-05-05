@@ -142,38 +142,50 @@ exports.getBuyerProfileById = async(req, res, next) => {
 exports.updateBuyerProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { email, phone, addresses, username, storeName } = req.body;
+    const { phone, addresses, username, storeName, avatar } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return next(new createError('User not found', 404));
 
-    const updateData = { email }; 
+    const updateData = {};
 
-    if (user.role === 'Buyer' && username) {
+    if (username && user.role === 'Buyer') {
       updateData.username = username;
     }
 
-    if (user.role === 'Vendor' && storeName) {
-      updateData.storeName = storeName; 
+    if (storeName && user.role === 'Vendor') {
+      updateData.storeName = storeName;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    if (avatar) {
+      updateData.avatar = avatar.url;
+      updateData.avatarId = avatar.fileId;
+    }
 
-    
+    let updatedUser = user;
+    if (Object.keys(updateData).length > 0) {
+      updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+        new: true,
+        runValidators: true,
+      });
+    }
+
+    const profileUpdate = {};
+    if (phone) profileUpdate.phone = phone;
+    if (addresses) profileUpdate.addresses = addresses;
+
     const profile = await BuyerProfile.findOneAndUpdate(
       { buyerId: userId },
-      { phone, addresses },
+      profileUpdate,
       { new: true, upsert: true }
     );
 
     res.status(200).json({
       status: 'success',
       user: updatedUser,
-      profile, 
+      profile,
     });
+
   } catch (error) {
     console.error('failed to update buyer profile', error);
     next(error);
