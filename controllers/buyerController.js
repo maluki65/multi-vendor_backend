@@ -4,6 +4,7 @@ const BuyerProfile = require('../models/buyerModel');
 const Product = require('../models/productModel');
 const createError = require('../utils/appError');
 const APIFeatures = require('../utils/APIFeatures');
+const ImageKit = require('../config/imgKit');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
@@ -142,7 +143,7 @@ exports.getBuyerProfileById = async(req, res, next) => {
 exports.updateBuyerProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { phone, addresses, username, storeName, avatar } = req.body;
+    const { phone, addresses, username, storeName, avatar, fullname } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return next(new createError('User not found', 404));
@@ -157,12 +158,8 @@ exports.updateBuyerProfile = async (req, res, next) => {
       updateData.storeName = storeName;
     }
 
-    if (avatar) {
-      updateData.avatar = avatar.url;
-      updateData.avatarId = avatar.fileId;
-    }
-
     let updatedUser = user;
+
     if (Object.keys(updateData).length > 0) {
       updatedUser = await User.findByIdAndUpdate(userId, updateData, {
         new: true,
@@ -171,14 +168,34 @@ exports.updateBuyerProfile = async (req, res, next) => {
     }
 
     const profileUpdate = {};
+
+    const oldProfile = await BuyerProfile.findOne({ buyerId: userId });
+    const oldAvatarId = oldProfile?.avatarId;
+
     if (phone) profileUpdate.phone = phone;
     if (addresses) profileUpdate.addresses = addresses;
+    if (fullname) profileUpdate.fullname = fullname;
+
+    if(avatar) {
+      profileUpdate.avatar = avatar.url;
+      profileUpdate.avatarId = avatar.fileId;
+    }
 
     const profile = await BuyerProfile.findOneAndUpdate(
       { buyerId: userId },
       profileUpdate,
       { new: true, upsert: true }
     );
+
+    if (avatar && oldAvatarId) {
+      setImmediate(async () => {
+        try {
+          await ImageKit.deleteFile(oldAvatarId);
+        } catch (err) {
+          console.error('Failed to delete old avatar:', err.message);
+        }
+      });
+    }
 
     res.status(200).json({
       status: 'success',
@@ -188,6 +205,37 @@ exports.updateBuyerProfile = async (req, res, next) => {
 
   } catch (error) {
     console.error('failed to update buyer profile', error);
+    next(error);
+  }
+};
+
+// On updating user notications
+exports.updateNotificationPreferences = async (req, res, next) => {
+  try{
+    const userId = req.user.id;
+    const { type, value } = req.body;
+
+    const allowedTypes = ['email', 'sms', 'push'];
+    if (!allowedTypes.includes(type)) {
+      return next(new createError('Invalid notification type', 400));
+    }
+
+    const profile = await BuyerProfile.findOneAndUpdate(
+      { buyerId: userId },
+      {
+        $set: {
+          [`preferences.notification.${type}`]: value,
+        },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      preferences: profile.preferences,
+    });
+  } catch (error) {
+    console.error('Failed to update notification preference', error);
     next(error);
   }
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const { createReview, getProductReviews, updateReview, deleteReview  } = require('../controllers/reviewController');
-const { getUserInfo, updateUserSettings, getProductsByVendor, getProductsByCategory, getRecommendedProducts,searchProduct, getBuyerProfile, createBuyerProfile, updateBuyerProfile, updateBuyerAvatar } = require('../controllers/buyerController');
+const { getUserInfo, updateUserSettings, getProductsByVendor, getProductsByCategory, getRecommendedProducts,searchProduct, getBuyerProfile, createBuyerProfile, updateBuyerProfile, updateBuyerAvatar, updateNotificationPreferences } = require('../controllers/buyerController');
 const { getAllProducts, getSmartRecomendations, getAllBrands, getSimilarProducts } = require('../controllers/productController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
@@ -29,8 +29,9 @@ router.put('/settings', protect, restrictTo('Buyer'), updateUserSettings);
 router.patch('/reviews/:reviewId', protect, restrictTo('Buyer'), updateReview);
 
 // On PATCH routes
-router.patch('/profile', protect, restrictTo('Buyer'), updateBuyerProfile);
+router.patch('/profile/update', protect, restrictTo('Buyer'), updateBuyerProfile);
 router.patch('/profile/img', protect, restrictTo('Buyer'), updateBuyerAvatar);
+router.patch('/profile/preferences/notification', protect, restrictTo('Buyer'), updateNotificationPreferences);
 
 // On DELETE routes
 //router.delete('/reviews/:reviewId', protect, restrictTo('Buyer', 'Admin'), deleteReview);
