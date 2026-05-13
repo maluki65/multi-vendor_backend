@@ -1,25 +1,85 @@
 const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
+const BuyerProfile = require('../models/buyerModel');
 
 // On vendor getting their orders for the store
 exports.getVendorOrders = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    /*const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
-    if (!vendorProfile)
-      return next (new createError('Vendor profile not found', 404));
-
-    const vendorId = vendorProfile._id;*/
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
     
-    const orders = await Order.find({ vendorId });
-
-    res.status(200).json({ 
-      status: 'success', 
-      results: orders.length, 
-      orders 
+    const vendorProfile = await VendorProfile.findOne({
+      vendorId: userId,
     });
+
+    if(!vendorProfile) {
+      return next(new createError('Vendor profile not found!', 404));
+    }
+
+    const query = {
+      vendorId: vendorProfile._id,
+    };
+
+    if (search) {
+      query.orderNumber = {
+        $regex: search,
+        $options: 'i',
+      };
+    }
+
+    const total = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
+     .populate({
+      path: 'buyerId',
+      select:'username email',
+     })
+     .sort({ createdAt: -1 })
+     .skip(skip)
+     .limit(limit)
+     .lean();
+
+    const buyerIds = orders.map((order) => order.buyerId?._id);
+
+    const buyerProfiles = await BuyerProfile.find({
+      userId: { $in: buyerIds },
+    })
+     .select('userId phone')
+     .lean();
+
+    const buyerProfileMap = {};
+
+    buyerProfiles.forEach((profile) => {
+      buyerProfileMap[profile.userId.toString()] = profile;
+    });
+
+    const formattedOrders = orders.map((order) => {
+      const buyerProfile = buyerProfileMap[order.buyerId?._id?.toString()];
+
+      return {
+        ...order,
+        buyer: {
+          username: order.buyerId?.username || null,
+          email: order.buyerId?.email || null,
+          phone: buyerProfile?.phone || null,
+        },
+      };
+    });
+
+    res.status(200).json({
+      status: 'success',
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total,
+      results: formattedOrders.length,
+      orders: formattedOrders,
+    })
   } catch (error) {
     console.error('Failed to get vendor orders', error);
     next(error);
@@ -91,83 +151,126 @@ exports.getOrderbyId = async (req, res, next) => {
   }
 };
 
-//On updating order status
+// On updating order status for Buyer, Vendor and Buyer
 exports.updateOrderStatus = async (req, res, next) => {
   try {
-    const { id } = req.params; // orderId
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    const { orderId } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findById(id);
-    if(!order) return next (new createError('Order not found!', 404));
+    const validStatuses = [
+      'pending',
+      'processing',
+      'shipped',
+      'completed',
+    ];
 
-    const oldStatus = order.orderStatus;
-    const statusOrder = ['pending', 'processing', 'shipped', 'completed'];
-    const currentIndex = statusOrder.indexOf(oldStatus);
-    const newIndex = statusOrder.indexOf(status);
+    if (!validStatuses.includes(status)) {
+      return next(new createError('Invalid order status', 400));
+    }
 
-    // On ensuring forward-only progression
-    if (newIndex < currentIndex)
-      return next(new createError('Cannot revert to a previous status', 400));
+    const order = await Order.findById(orderId);
+    if(!order) {
+      return next(new createError('Order not found', 404));
+    }
 
-    // On vendor logic
-    if (req.user.role === 'Vendor') {
-      const vendorProfile = await VendorProfile.findOne({ vendorId: req.user.id });
-      if(!vendorProfile)
+    const vendorTransitions = {
+      pending: ['proccessing'],
+      proccessing: ['shipped'],
+      shipped: [],
+      completed: [],
+    };
+
+    const buyerTransitions = { 
+      shipped: ['completed'],
+    };
+
+    const adminTransitions = {
+      pending: ['processing', 'shipped', 'completed'],
+      proccessing: ['pending', 'shipped', 'completed'],
+      shipped: ['pending', 'processing', 'completed'],
+      completed: ['pending', 'processing', 'shipped'],
+    };
+
+    const currentStatus = order.orderStatus;
+
+    let allowedTransitions = [];
+
+    if (role === 'Vendor'){
+      const vendorProfile = await VendorProfile.findOne({
+        vendorId: userId,
+      });
+
+      if(!vendorProfile) {
         return next(new createError('Vendor profile not found', 404));
+      }
 
-      if (order.vendorId.toString() !== vendorProfile._id.toString())
-        return next(new createError('Not authorized to update order', 403));
+      if (order.vendorId.toString() !== vendorProfile._id.toString()){
+        return next(
+          new createError(
+            'You are not allowed to update this order!', 403
+          )
+        );
+      }
 
-      // vendor can only move from processing to shipped
-      if (oldStatus !== 'processing' || status !== 'shipped')
-        return next(new createError('Vendor can only mark order as shipped after processing', 400));
+      allowedTransitions = vendorTransitions[currentStatus] || [];
+    } else if (role === 'Buyer') {
+      if (order.buyerId.toString() !== userId.toString()) {
+        return next(
+          new createError(
+            'You are not allowed to update this order!', 403
+          )
+        );
+      }
 
-      order.orderStatus = 'shipped';
+      allowedTransitions = buyerTransitions[currentStatus] || [];
+    } else if (role === 'Admin') {
+      allowedTransitions = adminTransitions[currentStatus] || [];
+    }  else {
+      return next(new createError('Unathorized access!', 403));
     }
 
-    // On buyer logic
-    else if (req.user.role === 'Buyer') {
-      if (order.buyerId.toString() !== req.user.id)
-        return next(new createError('Not authorized to update this order', 403));
-
-      // Buyer can only move from shipped to completed
-      if (oldStatus !== 'shipped' || status !== 'completed')
-        return next(new createError('Buyers can only mark shipped order as complete', 400));
-
-      order.orderStatus = 'completed';
+    if (!allowedTransitions.includes(status)) {
+      return next(
+        new createError(
+          `Cannot change order from "${currentStatus}" to "${status}"`, 400
+        )
+      );
     }
 
-    // Admin logic
-    else if (req.user.role === 'Admin') {
-      const validStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
-      if (!validStatuses.includes(status))
-        return next(new createError('Invalid status', 400));
-
-      order.orderStatus = status;
-    }
-
-    // other logic
-    else {
-      return next(new createError('Unathorized role', 403));
-    }
-
-    // On recording history entry incase of dispute
     order.statusHistory.push({
-      from: oldStatus,
+      from : currentStatus,
       to: status,
-      changedBy: req.user.id,
-      role: req.user.role,
+      changedBy: userId,
+      role,
       date: new Date(),
     });
+
+    order.orderStatus = status;
+    
+    if (status === 'processing') {
+      order.processingAt = new Date();
+    }
+    
+    if (status === 'shipped' && !order.shippedAt) {
+      order.shippedAt = new Date();
+    }
+    
+    if (status === 'completed' && !order.completedAt) {
+      order.completedAt = new Date();
+    }
 
     await order.save();
 
     res.status(200).json({
       status: 'success',
-      message: `Order status updated to ${order.orderStatus}`,
+      message: `Order status updated to ${status}`,
       order,
     });
   } catch (error) {
+    console.error('Failed tp update order status', error);
     next(error);
   }
 };

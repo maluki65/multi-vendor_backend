@@ -63,6 +63,18 @@ const orderSchema = new mongoose.Schema({
     index: true,
   },
 
+  processingAt: {
+    type: Date,
+  },
+
+  shippedAt: {
+    type: Date,
+  },
+
+  completedAt: {
+    type: Date,
+  },
+
   platformCommission:{ type: Number, index: true },
   totalAmount: { type: Number, required: true },
   paymentProvider: { type: String,  default: 'Simulated' },
@@ -80,6 +92,6 @@ orderSchema.pre('save', function (next){
   next();
 });
 
-orderSchema.index({ buyerId: 1, vendorId:1, 'products.productId': 1, orderStatus: 1, createdAt: -1 });
+orderSchema.index({ buyerId: 1, vendorId:1, 'products.productId': 1, orderStatus: 1, orderNumber: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

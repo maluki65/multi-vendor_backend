@@ -22,7 +22,7 @@ router.get('/admin/all', protect, restrictTo('Admin'), getAllOrders);
 router.get('/orders/buyer/cancelled', protect, restrictTo('Buyer'), getBuyerCancelledOrders);
 
 // On updating order status
-router.patch('/orders/:id/status', protect, updateOrderStatus);
+router.patch('/update/:orderId/status', protect, restrictTo('Admin', 'Vendor', 'Buyer'), updateOrderStatus);
 
 router.patch('/orders/cancel/:id', protect, restrictTo('Buyer'), cancelOrder);
 
