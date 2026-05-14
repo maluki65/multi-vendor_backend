@@ -177,8 +177,8 @@ exports.updateOrderStatus = async (req, res, next) => {
     }
 
     const vendorTransitions = {
-      pending: ['proccessing'],
-      proccessing: ['shipped'],
+      pending: ['processing'],
+      processing: ['shipped'],
       shipped: [],
       completed: [],
     };
@@ -189,7 +189,7 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     const adminTransitions = {
       pending: ['processing', 'shipped', 'completed'],
-      proccessing: ['pending', 'shipped', 'completed'],
+      processing: ['pending', 'shipped', 'completed'],
       shipped: ['pending', 'processing', 'completed'],
       completed: ['pending', 'processing', 'shipped'],
     };
