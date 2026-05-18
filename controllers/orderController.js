@@ -47,15 +47,17 @@ exports.getVendorOrders = async (req, res, next) => {
     const buyerIds = orders.map((order) => order.buyerId?._id);
 
     const buyerProfiles = await BuyerProfile.find({
-      userId: { $in: buyerIds },
+      buyerId: { $in: buyerIds },
     })
-     .select('userId phone')
+     .select('buyerId phone')
      .lean();
 
+     //console.log('Buyer profiles:', buyerProfiles);
+     //console.log('BuyerIds', buyerIds)
     const buyerProfileMap = {};
 
     buyerProfiles.forEach((profile) => {
-      buyerProfileMap[profile.userId.toString()] = profile;
+      buyerProfileMap[profile.buyerId.toString()] = profile;
     });
 
     const formattedOrders = orders.map((order) => {
