@@ -23,18 +23,20 @@ const userSchema = mongoose.Schema({
 
 userSchema.index({ UUID: 1, storeName:1, status: 1, username: 1, role:1, createdAt: -1 });
 
-userSchema.pre('save', function(next) {
+/*userSchema.pre('save', function(next) {
   
-  if (this.role === 'Vendor' && !this.isModified('status')) {
-    this.status = 'pending';
-  }
+  if (this.isNew) {
+    if (this.role === 'Vendor') {
+      this.status = 'pending';
+    }
 
-  if (this.role === 'Buyer' && !this.isModified('status')) {
-    this.status = 'approved';
+    if (this.role === 'Buyer') {
+      this.status = 'approved';
+    }
   }
 
   next();
-});
+});*/
 
 // on generating slug when storeName changes
 userSchema.pre('save', function(next) {
