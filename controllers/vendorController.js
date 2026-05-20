@@ -3,6 +3,7 @@ const Orders = require('../models/orderModel');
 const User = require('../models/userModel');
 const createError = require('../utils/appError');
 const slugify = require('../utils/slugify');
+const ImageKit = require('../config/imgKit');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
@@ -146,73 +147,179 @@ exports.getVendorProfileById = async(req, res, next) => {
 
 // On updating vendor profile
 exports.updateVendorProfile = async(req, res, next) => {
-  try {
+  try{
     const userId = req.user.id;
 
     const user = await User.findById(userId);
-    if(!user) return next(new createError('User not found!', 404));
 
-    if (user.role !== 'Vendor') {
+    if (!user) {
+      return next(new createError('User not found!', 404));
+    }
+
+    if (user.role !== 'Vendor'){
       return next(new createError('Only vendors can update this profile', 403));
     }
 
-    // on flattening nested objects
-    const flattenObject = (obj, parent = '', res = {}) => {
+    const profile = await VendorProfile.findOne({ vendorId: userId });
+
+    if (!profile) {
+      return next(new createError('Vendor profile not found!', 404));
+    }
+
+    // On flattening the objects
+    const flattenObjects = ( 
+      obj, 
+      parent = '', 
+      res = {} 
+    ) => {
       for (let key in obj) {
-        const propName = parent ? `${parent}.${key}` : key;
+        const propName = parent
+         ? `${parent}.${key}`
+         : key;
 
         if (
-          obj[key] !== null && 
-          typeof obj[key] === 'object' &&
-          !Array.isArray(obj[key])
+          obj[key] !== null &&
+          typeof obj[key] === 'object' && !Array.isArray(obj[key])
         ) {
-          flattenObject(obj[key], propName, res);
+          flattenObjects(
+            obj[key],
+            propName,
+            res
+          );
         } else {
           res[propName] = obj[key];
         }
       }
+
       return res;
     };
 
-    const allowedProfileFields = [
-      'businessInfo',
-      'store',
-      'payout',
-      'socialLinks'
-    ];
+    const profileUpdateData = {};
+    const userUpdateData = {};
 
+    if (req.body.legalName) {
+      userUpdateData.storeName = req.body.legalName;
 
-    const profileUpdatedData = {};
+      profileUpdateData['businessInfo.legalName'] = req.body.legalName;
 
-    /*if (req.body.store?.storeName) {
-      profileUpdatedData['store.storeSlug'] = slugify(req.body.storeName);
+      /*profileUpdateData['store.storeSlug'] = slugify(req.body.legalName, {
+        lower: true,
+        strict: true,
+      });*/
+    }
+
+    if (req.body.description !== undefined) {
+      profileUpdateData[
+        'store.description'
+      ] = req.body.description;
+    }
+
+    if (req.body.phone !== undefined) {
+      profileUpdateData[
+        'store.contactPhone'
+      ] = req.body.phone;
+    }
+
+    if (req.body.addresses) {
+      const flattenedAddresses = flattenObjects(
+        req.body.addresses,
+        'store.addresses'
+      );
+
+      Object.assign(
+        profileUpdateData,
+        flattenedAddresses
+      );
+    }
+
+    if (req.body.payout) {
+      const flattenedPayout =
+        flattenObjects(
+          req.body.payout,
+          'payout'
+        );
+
+      Object.assign(
+        profileUpdateData,
+        flattenedPayout
+      );
+    }
+
+    /*if (req.body.socialLinks) {
+
+      const flattenedSocials =
+        flattenObjects(
+          req.body.socialLinks,
+          'socialLinks'
+        );
+
+      Object.assign(
+        profileUpdateData,
+        flattenedSocials
+      );
     }*/
 
-    for (let key of allowedProfileFields){
-      if (req.body[key] !== undefined){
-        if (typeof req.body[key] === 'object' && req.body[key] !== null) {
-          Object.assign(profileUpdatedData, flattenObject(req.body[key], key));
-        } else {
-          profileUpdatedData[key] = req.body[key];
+    if (req.body.logo) {
+      if (profile.logoId){
+        try {
+          await ImageKit.deleteFile(
+            profile.logoId
+          )
+        }catch (error) {
+          console.error('Failed to delete old logo', error.message);
         }
       }
+
+      profileUpdateData['logo'] = req.body.logo;
+      profileUpdateData['logoId'] = req.body.logoId;
     }
 
-    if (Object.keys(profileUpdatedData).length === 0) {
-      return next(new createError('No valid fields provided', 403));
+    if (req.body.banner) {
+      if (profile.banner){
+        try {
+          await ImageKit.deleteFile(
+            profile.bannerId
+          )
+        }catch (error) {
+          console.error('Failed to delete old banner', error.message);
+        }
+      }
+
+      profileUpdateData['banner'] = req.body.banner;
+      profileUpdateData['bannerId'] = req.body.bannerId;
     }
 
-    const profile = await VendorProfile.findOneAndUpdate(
+    if (
+      Object.keys(profileUpdateData).length === 0 &&
+      Object.keys(userUpdateData).length === 0
+    ) {
+      return next (new createError('No valid fields provided!', 400));
+    }
+
+    if (Object.keys(userUpdateData).length > 0){
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: userUpdateData,
+        }
+      );
+    }
+
+    const updatedProfile = await VendorProfile.findOneAndUpdate(
       { vendorId: userId },
-      { $set: profileUpdatedData },
-      { new: true }
+      {
+        $set: profileUpdateData,
+      },
+      {
+        new: true,
+      }
     );
 
     res.status(200).json({
       status: 'success',
-      profile,
+      profile: updatedProfile
     });
-  } catch (error){
+  }catch (error){
     console.error('Failed to update vendor profile', error);
     next(error);
   }
