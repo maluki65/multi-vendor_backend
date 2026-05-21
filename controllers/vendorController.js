@@ -4,6 +4,7 @@ const User = require('../models/userModel');
 const createError = require('../utils/appError');
 const slugify = require('../utils/slugify');
 const ImageKit = require('../config/imgKit');
+const Product = require('../models/productModel');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
@@ -321,6 +322,126 @@ exports.updateVendorProfile = async(req, res, next) => {
     });
   }catch (error){
     console.error('Failed to update vendor profile', error);
+    next(error);
+  }
+};
+
+// On vendor analytics
+exports.getVendorAnalytics = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
+    if(!vendorProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found',
+      });
+    };
+
+    const vendorId = vendorProfile._id;
+
+    const totalOrders = await Orders.countDocuments({
+      vendorId,
+      orderStatus: 'completed'
+    });
+
+    const pendingOrders = await Orders.countDocuments({
+      vendorId,
+      orderStatus: 'pending',
+    });
+
+    const revenueResult = await Orders.aggregate([
+      {
+        $match: {
+          vendorId,
+          orderStatus: 'completed',
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: '$vendorEarnings',
+          },
+          totalCommission: {
+            $sum: '$platformCommission'
+          },
+        },
+      },
+    ]);
+
+    const totalProducts = await Product.countDocuments({ vendorId });
+
+    const monthlyRevenue = await Orders.aggregate([
+      {
+        $match: {
+          vendorId,
+          orderStatus: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: {
+            month: {
+              $month: '$createdAt',
+            },
+          },
+          income: {
+            $sum: '$vendorEarnings',
+          },
+          expenses: {
+            $sum: '$platformCommission',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          month: {
+            $arrayElemAt: [
+              [
+                '',
+                'Jan',
+                'Feb',
+                'Mar',
+                'Apr',
+                'May',
+                'Jun',
+                'Jul',
+                'Aug',
+                'Sep',
+                'Oct',
+                'Nov',
+                'Dec',
+              ],
+              '$_id.month',
+            ],
+          },
+          income: 1,
+          expenses: 1,
+        },
+      },
+      {
+        $sort: {
+          '_id.month': 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        totalOrders,
+        pendingOrders,
+        totalProducts,
+        totalRevenue: revenueResult[0]?.totalRevenue || 0,
+        totalCommission: revenueResult[0]?.totalCommission || 0,
+        monthlyRevenue,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to get vendor analytics', error);
     next(error);
   }
 };

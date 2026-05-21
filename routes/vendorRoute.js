@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
-const { createVendorProfile, updateVendorProfile, updateVendorMedia, getVendorStats, getVendorProfile  } = require('../controllers/vendorController');
+const { createVendorProfile, updateVendorProfile, updateVendorMedia, getVendorStats, getVendorProfile, getVendorAnalytics  } = require('../controllers/vendorController');
 const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
 const { addVerificationInfo, getVerificationInfo, updateVerificationInfo } = require('../controllers/verificationController');
@@ -41,6 +41,7 @@ router.get('/categories', protect, restrictTo('Vendor', 'Admin', 'Buyer'), getAl
 
 // On creating a public route
 router.get('/profile', protect, getVendorProfile);
+router.get('/dashboard/analytics', protect, restrictTo('Vendor'), getVendorAnalytics);
 
 // On Vendor products 
 router.post('/add-product', protect, restrictTo('Vendor'), vendorGuard, createProduct);
