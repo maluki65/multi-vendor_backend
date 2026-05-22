@@ -237,7 +237,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (!allowedTransitions.includes(status)) {
       return next(
         new createError(
-          `Cannot change order from "${currentStatus}" to "${status}"`, 400
+          `Vendor cannot change order from ${currentStatus} to ${status}`, 400
         )
       );
     }

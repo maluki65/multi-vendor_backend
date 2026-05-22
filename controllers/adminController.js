@@ -1,11 +1,12 @@
 const User = require('../models/userModel');
-const Order = require('../models/orderModel');
+const Orders = require('../models/orderModel');
 const createError = require('../utils/appError');
 //const Profile = require('../models/UserProfile');
 const AdminProfile = require('../models/AdminProfile');
 const removeUndefined = require('../utils/removeUndefined');
 const { sendMail } = require('../utils/nodemailer');
 const mongoose = require('mongoose');
+const Product = require('../models/productModel');
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -305,7 +306,7 @@ exports.rejectVendor = async (req, res, next) => {
 // On getting all cancelled orders
 exports.getAllCancelledOrders = async (req, res, next) => {
   try{
-    const orders = await Order.find({ orderStatus: 'cancelled'})
+    const orders = await Orders.find({ orderStatus: 'cancelled'})
     .populate('buyerId', 'username email')
     .populate('vendorId', 'storeName')
     .populate('products.productId', 'name MainIMg price');
@@ -336,6 +337,177 @@ exports.deleteUser = async(req, res, next) => {
     });
   } catch (error) {
     console.error('Failed to delete user:', error);
+    next(error);
+  }
+};
+
+// On admin analytics
+exports.getAdminAnalytics = async (req, res, next) => {
+  try {
+    const totalOrders = await Orders.countDocuments({ orderStatus: 'completed' });
+
+    const pendingOrders = await Orders.countDocuments({ orderStatus: 'pending' });
+
+    const totalProducts = await Product.countDocuments();
+
+    const revenueResults = await Orders.aggregate([
+      {
+        $match: {
+          orderStatus: 'completed',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalRevenue: {
+            $sum: '$totalAmount',
+          },
+          totalPlatformCommission: {
+            $sum: '$platformCommission'
+          },
+          totalVendorEarings: {
+            $sum: '$vendorEarnings',
+          },
+        },
+      },
+    ]);
+
+    const now = new Date();
+
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const previousDate = new Date(
+      currentYear,
+      now.getMonth() - 1
+    );
+
+    const previousMonth = previousDate.getMonth() + 1;
+    const previousYear = previousDate.getFullYear();
+
+    const monthlyRevenue = await Orders.aggregate([
+      {
+        $match: {
+          orderStatus: 'completed'
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: {
+              $year: '$createdAt',
+            },
+            month: {
+              $month: '$createdAt',
+            },
+          },
+          revenue: {
+            $sum: '$totalAmount',
+          },
+          commission: {
+            $sum: '$platformCommission',
+          },
+          orders: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          year: '$_id.year',
+          monthNumber: '$_id.month',
+          month:{
+            $arrayElemAt: [
+              [
+                '',
+                'Jan',
+                'Feb',
+                'Mar',
+                'Apr',
+                'May',
+                'Jun',
+                'Jul',
+                'Aug',
+                'Sep',
+                'Oct',
+                'Nov',
+                'Dec',
+              ],
+              '$_id.month',
+            ],
+          },
+          revenue: 1,
+          commission: 1,
+          vendorEarnings: 1,
+          orders: 1,
+        },
+      },
+      {
+        $sort: {
+          year: 1,
+          monthNumber: 1,
+        },
+      },
+    ]);
+
+    const currentMonthData = monthlyRevenue.find(
+      item => item.monthNumber === currentMonth &&
+      item.year === currentYear
+    );
+
+    const previousMonthData = monthlyRevenue.find(
+      item => item.monthNumber === previousMonth &&
+      item.year === previousYear
+    );
+
+    const currentRevenue = currentMonthData?.revenue || 0;
+    const previousRevenue = previousMonthData?.revenue || 0;
+
+    const currentCommission = currentMonthData?.commission || 0;
+    const previousCommission = previousMonthData?.commission || 0;
+
+    const currentOrders = currentMonthData?.orders || 0;
+    const previousOrders = previousMonthData?.orders || 0;
+
+    const calculatedTrend = (current, previous) => {
+      if (previous === 0) {
+        return current > 0 ? 100 : 0;
+      }
+
+      const percentage = ((current - previous) / previous) * 100;
+
+      return Number(percentage.toFixed(1));
+    };
+
+    const revenueTrend = calculatedTrend(currentRevenue, previousRevenue);
+    const commissionTrend = calculatedTrend(currentCommission, previousCommission);
+    const ordersTrend = calculatedTrend(currentOrders, previousOrders);
+
+    const hascurrentOrders = currentOrders > 0;
+    const hasCurrentRevenue = currentRevenue > 0;
+    const hasCurrentCommission = currentCommission > 0;
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        totalOrders,
+        pendingOrders,
+        totalProducts,
+        totalRevenue: revenueResults[0]?.totalRevenue || 0,
+        totalPlatformCommission: revenueResults[0]?.totalPlatformCommission || 0,
+        monthlyRevenue,
+        revenueTrend,
+        commissionTrend,
+        ordersTrend,
+        hascurrentOrders,
+        hasCurrentRevenue,
+        hasCurrentCommission,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to get admin analytics', error);
     next(error);
   }
 };

@@ -373,6 +373,19 @@ exports.getVendorAnalytics = async (req, res, next) => {
 
     const totalProducts = await Product.countDocuments({ vendorId });
 
+    const now = new Date();
+
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const previousDate = new Date(
+      currentYear,
+      now.getMonth() -1,
+    );
+
+    const previousMonth = previousDate.getMonth() + 1;
+    const previousYear = previousDate.getFullYear();
+
     const monthlyRevenue = await Orders.aggregate([
       {
         $match: {
@@ -383,6 +396,9 @@ exports.getVendorAnalytics = async (req, res, next) => {
       {
         $group: {
           _id: {
+            year: {
+              $year: '$createdAt'
+            },
             month: {
               $month: '$createdAt',
             },
@@ -398,6 +414,8 @@ exports.getVendorAnalytics = async (req, res, next) => {
       {
         $project: {
           _id: 0,
+          year: '$_id.year',
+          monthNumber: '$_id.month',
           month: {
             $arrayElemAt: [
               [
@@ -424,10 +442,49 @@ exports.getVendorAnalytics = async (req, res, next) => {
       },
       {
         $sort: {
-          '_id.month': 1,
+          year: 1,
+          monthNumber: 1,
         },
       },
     ]);
+
+    const currentMonthData = monthlyRevenue.find(
+      item =>
+        item.monthNumber === currentMonth &&
+        item.year === currentYear
+    );
+    
+    const previousMonthData = monthlyRevenue.find(
+      item =>
+        item.monthNumber === previousMonth &&
+        item.year === previousYear
+    );    
+
+    const currentRevenue = currentMonthData?.income || 0;
+    const previousRevenue = previousMonthData?.income || 0;
+
+    const currentCommission = currentMonthData?.expenses || 0;
+    const previousCommission = previousMonthData?.expenses || 0;
+
+    const calculatedTrend = (current, previous) => {
+      if (previous === 0 && current > 0) {
+        return 100;
+      }
+
+      if (previous === 0 && current === 0){
+        return 0;
+      }
+
+      const percentage = ((current - previous) / previous) * 100;
+
+      return Number((percentage.toFixed(1)));
+    };
+
+    const hasCurrentRevenue = currentRevenue > 0;
+    const hasCurrentCommission = currentCommission > 0;
+
+    const revenueTrend = calculatedTrend(currentRevenue, previousRevenue);
+    const commissionTrend = calculatedTrend(currentCommission, previousCommission);
 
     res.status(200).json({
       success: true,
@@ -438,6 +495,10 @@ exports.getVendorAnalytics = async (req, res, next) => {
         totalRevenue: revenueResult[0]?.totalRevenue || 0,
         totalCommission: revenueResult[0]?.totalCommission || 0,
         monthlyRevenue,
+        revenueTrend,
+        commissionTrend,
+        hasCurrentRevenue,
+        hasCurrentCommission,
       },
     });
   } catch (error) {

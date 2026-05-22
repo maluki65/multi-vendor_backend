@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser, createAdminProfile, getAdminProfile, updateAdminProfile } = require('../controllers/adminController');
+const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser, createAdminProfile, getAdminProfile, updateAdminProfile, getAdminAnalytics } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -47,6 +47,7 @@ router.get('/categories', protect, restrictTo('Admin'), getAllCategories);
 router.get('/products/pending', protect, restrictTo('Admin'), getPendingProducts);
 
 // On getting all vendors with status pending
+router.get('/dashboard/analytics', protect, restrictTo('Admin'), getAdminAnalytics);
 router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPendingVendors);
 
 // On searching users
