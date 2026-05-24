@@ -91,7 +91,24 @@ exports.getVendorOrders = async (req, res, next) => {
 // On admin getting all orders
 exports.getAllOrders = async(req, res, next) => {
   try {
-    const orders = await Order.find();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    
+    const orders = await Order.find()
+     .populate({
+      path: 'buyerId',
+      select: 'username email'
+     })
+     .polulate({
+      path:'vendorId',
+      select: 'storeName email'
+     })
+     .sort({ createdAt })
+     .skip(skip)
+     .limit(limit)
+     .lean();
 
     res.status(200).json({ 
       status: 'success',

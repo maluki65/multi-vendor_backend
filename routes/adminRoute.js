@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser, createAdminProfile, getAdminProfile, updateAdminProfile, getAdminAnalytics } = require('../controllers/adminController');
+const { getAllUsers, getPendingVendors, searchUsers, approveVendor, rejectVendor, getAllCancelledOrders, deleteUser, createAdminProfile, getAdminProfile, updateAdminProfile, getAdminAnalytics, updateUserRole } = require('../controllers/adminController');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
@@ -20,25 +20,7 @@ router.post('/create', protect, restrictTo('Admin'), authController.admin);
 router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
 
 // On promoting user to admin
-router.patch('/promote/:id', protect, restrictTo('Admin'), async(req, res, next) => {
-  try {
-    const user = await User.findByIdAndUpdate(req.params.id, { role: 'Admin', status: 'approved'},
-    {new: true, runValidators: true }
-    ).select('-password');
-
-    if (!user) return res.status(404).json({
-      message: 'User not found'
-    });
-
-    res.status(200).json({
-      status: 'success',
-      message: `${user.username} has been promoted to Admin`,
-      user,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+router.patch('/promote/:id', protect, restrictTo('Admin'), updateUserRole);
 
 // On getting all users
 router.get('/users', protect, restrictTo('Admin'), getAllUsers);

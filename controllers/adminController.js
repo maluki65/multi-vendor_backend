@@ -511,3 +511,35 @@ exports.getAdminAnalytics = async (req, res, next) => {
     next(error);
   }
 };
+
+//On updating user roles
+exports.updateUserRole = async (req, res , next) => {
+  try {
+    const { role } = req.body;
+
+    let status = 'approved';
+
+    if (role === 'Vendor' || role === 'Admin'){
+      status = 'pending';
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id, 
+      { role, status },
+      {new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) return res.status(404).json({
+      message: 'User not found'
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `${user.username} has been promoted to ${role}`,
+      user,
+    });
+  } catch (error) {
+    console.error('Failed to update user role:', error);
+    next(error);
+  }
+}
