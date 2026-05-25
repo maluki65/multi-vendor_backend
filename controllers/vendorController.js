@@ -351,27 +351,127 @@ exports.getVendorAnalytics = async (req, res, next) => {
       orderStatus: 'pending',
     });
 
-    const revenueResult = await Orders.aggregate([
+    const analyticsResults = await Orders.aggregate([
       {
         $match: {
           vendorId,
           orderStatus: 'completed',
-        }
+        },
       },
+
       {
-        $group: {
-          _id: null,
-          totalRevenue: {
-            $sum: '$vendorEarnings',
-          },
-          totalCommission: {
-            $sum: '$platformCommission'
-          },
+        $facet: {
+          revenueStats: [
+            {
+              $group: {
+
+                _id: null,
+
+                totalRevenue: {
+                  $sum: '$vendorEarnings',
+                },
+
+                totalCommission: {
+                  $sum: '$platformCommission',
+                },
+              },
+            },
+          ],
+
+          productStats: [
+            {
+              $unwind: '$products',
+            },
+            {
+              $group: {
+                _id: null,
+
+                totalProducts: {
+                  $sum: '$products.quantity',
+                },
+              },
+            },
+          ],
+
+          monthlyRevenue: [
+            {
+              $group: {
+                _id: {
+                  year: {
+                    $year: '$createdAt',
+                  },
+
+                  month: {
+                    $month: '$createdAt',
+                  },
+                },
+
+                income: {
+                  $sum: '$vendorEarnings',
+                },
+
+                expenses: {
+                  $sum: '$platformCommission',
+                },
+
+                orders: {
+                  $sum: 1,
+                },
+              },
+            },
+
+            {
+              $project: {
+                _id: 0,
+
+                year: '$_id.year',
+                monthNumber: '$_id.month',
+
+                month: {
+                  $arrayElemAt:[
+                    [
+                      '',
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ],
+                    '$_id.month',
+                  ],
+                },
+
+                income: 1,
+                expenses: 1,
+                orders: 1,
+              },
+            },
+
+            {
+              $sort: {
+                year: 1,
+                monthNumber: 1,
+              },
+            },
+          ],
         },
       },
     ]);
 
-    const totalProducts = await Product.countDocuments({ vendorId });
+    const revenueData = analyticsResults[0]?.revenueStats[0] || {};
+    const productData = analyticsResults[0]?.productStats[0] || {};
+    const monthlyRevenue = analyticsResults[0]?.monthlyRevenue || [];
+
+    const totalRevenue = revenueData.totalRevenue || 0;
+    const totalCommission = revenueData.totalCommission || 0;
+    const totalProducts = productData.totalProducts || 0;
 
     const now = new Date();
 
@@ -380,85 +480,19 @@ exports.getVendorAnalytics = async (req, res, next) => {
 
     const previousDate = new Date(
       currentYear,
-      now.getMonth() -1,
+      now.getMonth() - 1
     );
 
-    const previousMonth = previousDate.getMonth() + 1;
+    const previousMonth = previousDate.getMonth() + 1
     const previousYear = previousDate.getFullYear();
 
-    const monthlyRevenue = await Orders.aggregate([
-      {
-        $match: {
-          vendorId,
-          orderStatus: 'completed'
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: {
-              $year: '$createdAt'
-            },
-            month: {
-              $month: '$createdAt',
-            },
-          },
-          income: {
-            $sum: '$vendorEarnings',
-          },
-          expenses: {
-            $sum: '$platformCommission',
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          year: '$_id.year',
-          monthNumber: '$_id.month',
-          month: {
-            $arrayElemAt: [
-              [
-                '',
-                'Jan',
-                'Feb',
-                'Mar',
-                'Apr',
-                'May',
-                'Jun',
-                'Jul',
-                'Aug',
-                'Sep',
-                'Oct',
-                'Nov',
-                'Dec',
-              ],
-              '$_id.month',
-            ],
-          },
-          income: 1,
-          expenses: 1,
-        },
-      },
-      {
-        $sort: {
-          year: 1,
-          monthNumber: 1,
-        },
-      },
-    ]);
-
     const currentMonthData = monthlyRevenue.find(
-      item =>
-        item.monthNumber === currentMonth &&
-        item.year === currentYear
+      item => item.monthNumber === currentMonth && item.year === currentYear
     );
-    
+
     const previousMonthData = monthlyRevenue.find(
-      item =>
-        item.monthNumber === previousMonth &&
-        item.year === previousYear
-    );    
+      item => item.monthNumber === previousMonth && item.year === previousYear
+    );
 
     const currentRevenue = currentMonthData?.income || 0;
     const previousRevenue = previousMonthData?.income || 0;
@@ -471,20 +505,20 @@ exports.getVendorAnalytics = async (req, res, next) => {
         return 100;
       }
 
-      if (previous === 0 && current === 0){
+      if (previous === 0 && current === 0) {
         return 0;
       }
 
       const percentage = ((current - previous) / previous) * 100;
 
-      return Number((percentage.toFixed(1)));
+      return Number(percentage.toFixed(1));
     };
-
-    const hasCurrentRevenue = currentRevenue > 0;
-    const hasCurrentCommission = currentCommission > 0;
 
     const revenueTrend = calculatedTrend(currentRevenue, previousRevenue);
     const commissionTrend = calculatedTrend(currentCommission, previousCommission);
+    
+    const hasCurrentRevenue = currentRevenue > 0;
+    const hasCurrentCommission = currentCommission > 0;
 
     res.status(200).json({
       success: true,
@@ -492,8 +526,8 @@ exports.getVendorAnalytics = async (req, res, next) => {
         totalOrders,
         pendingOrders,
         totalProducts,
-        totalRevenue: revenueResult[0]?.totalRevenue || 0,
-        totalCommission: revenueResult[0]?.totalCommission || 0,
+        totalRevenue,
+        totalCommission,
         monthlyRevenue,
         revenueTrend,
         commissionTrend,

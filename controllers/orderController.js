@@ -38,6 +38,10 @@ exports.getVendorOrders = async (req, res, next) => {
      .populate({
       path: 'buyerId',
       select:'username email',
+      populate: {
+        path: 'buyerProfile',
+        select: 'phone'
+      }
      })
      .sort({ createdAt: -1 })
      .skip(skip)
@@ -95,17 +99,36 @@ exports.getAllOrders = async(req, res, next) => {
     const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
+
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        {
+          orderNumber: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+      ];
+    };
+
+    const totalOrders = await Order.countDocuments(query);
     
     const orders = await Order.find()
      .populate({
       path: 'buyerId',
-      select: 'username email'
+      select:'username email',
+      populate: {
+        path: 'buyerProfile',
+        select: 'phone'
+      }
      })
-     .polulate({
+     .populate({
       path:'vendorId',
-      select: 'storeName email'
+      select: 'businessInfo.legalName store.contactPhone store.contactEmail'
      })
-     .sort({ createdAt })
+     .sort({ createdAt: -1 })
      .skip(skip)
      .limit(limit)
      .lean();
@@ -113,6 +136,9 @@ exports.getAllOrders = async(req, res, next) => {
     res.status(200).json({ 
       status: 'success',
       results: orders.length, 
+      totalOrders,
+      currentPage: page,
+      totalPages: Math.ceil(totalOrders / limit),
       orders
     });
   } catch (error) {

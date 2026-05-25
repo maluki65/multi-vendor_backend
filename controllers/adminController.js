@@ -343,35 +343,171 @@ exports.deleteUser = async(req, res, next) => {
 
 // On admin analytics
 exports.getAdminAnalytics = async (req, res, next) => {
-  try {
-    const totalOrders = await Orders.countDocuments({ orderStatus: 'completed' });
-
-    const pendingOrders = await Orders.countDocuments({ orderStatus: 'pending' });
-
-    const totalProducts = await Product.countDocuments();
-
-    const revenueResults = await Orders.aggregate([
+  try{
+    const analyticsResults = await Orders.aggregate([
       {
-        $match: {
-          orderStatus: 'completed',
-        },
-      },
-      {
-        $group: {
-          _id: null,
+        $facet: {
+          completedOrders: [
+            {
+              $match: {
+                orderStatus: 'completed',
+              },
+            },
+            {
+              $count: 'totalOrders',
+            },
+          ],
 
-          totalRevenue: {
-            $sum: '$totalAmount',
-          },
-          totalPlatformCommission: {
-            $sum: '$platformCommission'
-          },
-          totalVendorEarings: {
-            $sum: '$vendorEarnings',
-          },
+          pendingOrders: [
+            {
+              $match: {
+                orderStatus: 'pending',
+              },
+            },
+            {
+              $count: 'pendingOrders'
+            }
+          ],
+
+          revenueStats: [
+            {
+              $match: {
+                orderStatus: 'completed',
+              },
+            },
+            {
+              $group: {
+                _id: null,
+
+                totalRevenue: {
+                  $sum: '$totalAmount',
+                },
+
+                totalPlatformCommission:{
+                  $sum: '$platformCommission',
+                },
+
+                totalVendorEarings: {
+                  $sum: '$vendorEarnings',
+                },
+              },
+            },
+          ],
+
+          productStats: [
+            {
+              $match: {
+                orderStatus: 'completed',
+              },
+            },
+            {
+              $unwind: '$products',
+            },
+            {
+              $group: {
+                _id: null,
+
+                totalProducts: {
+                  $sum: '$products.quantity',
+                },
+              },
+            },
+          ],
+
+          monthlyRevenue: [
+            {
+              $match: {
+                orderStatus: 'completed',
+              },
+            },
+            {
+              $group: {
+                _id: {
+                  year: {
+                    $year: '$createdAt',
+                  },
+
+                  month: {
+                    $month: '$createdAt',
+                  },
+                },
+
+                revenue: {
+                  $sum: '$totalAmount',
+                },
+
+                commission: {
+                  $sum: '$platformCommission',
+                },
+
+                vendorEarnings: {
+                  $sum: '$vendorEarnings'
+                },
+
+                orders: {
+                  $sum: 1,
+                },
+              },
+            },
+
+            {
+              $project: {
+                _id: 0,
+
+                year: '$_id.year',
+                monthNumber: '$_id.month',
+
+                month: {
+                  $arrayElemAt: [
+                    [
+                      '',
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ],
+                    '$_id.month',
+                  ],
+                },
+
+                revenue: 1,
+                commission: 1,
+                vendorEarnings: 1,
+                orders: 1,
+              },
+            },
+
+            {
+              $sort: {
+                year: 1,
+                monthNumber: 1,
+              },
+            },
+          ],
         },
       },
     ]);
+
+    const completedOrdersData = analyticsResults[0]?.completedOrders[0] || {};
+    const pendingOrdersData = analyticsResults[0]?.pendingOrders[0] || {};
+    const revenueData = analyticsResults[0]?.revenueStats[0] || {};
+    const productData = analyticsResults[0]?.productStats[0] || {};
+
+    const monthlyRevenue = analyticsResults[0]?.monthlyRevenue || [];
+
+    const totalOrders = completedOrdersData.totalOrders || 0;
+    const pendingOrders = pendingOrdersData.pendingOrders || 0;
+    const totalProducts = productData.totalProducts || 0;
+    const totalRevenue = revenueData.totalRevenue || 0;
+    const totalPlatformCommission = revenueData.totalPlatformCommission || 0;
 
     const now = new Date();
 
@@ -386,80 +522,11 @@ exports.getAdminAnalytics = async (req, res, next) => {
     const previousMonth = previousDate.getMonth() + 1;
     const previousYear = previousDate.getFullYear();
 
-    const monthlyRevenue = await Orders.aggregate([
-      {
-        $match: {
-          orderStatus: 'completed'
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: {
-              $year: '$createdAt',
-            },
-            month: {
-              $month: '$createdAt',
-            },
-          },
-          revenue: {
-            $sum: '$totalAmount',
-          },
-          commission: {
-            $sum: '$platformCommission',
-          },
-          orders: {
-            $sum: 1,
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          year: '$_id.year',
-          monthNumber: '$_id.month',
-          month:{
-            $arrayElemAt: [
-              [
-                '',
-                'Jan',
-                'Feb',
-                'Mar',
-                'Apr',
-                'May',
-                'Jun',
-                'Jul',
-                'Aug',
-                'Sep',
-                'Oct',
-                'Nov',
-                'Dec',
-              ],
-              '$_id.month',
-            ],
-          },
-          revenue: 1,
-          commission: 1,
-          vendorEarnings: 1,
-          orders: 1,
-        },
-      },
-      {
-        $sort: {
-          year: 1,
-          monthNumber: 1,
-        },
-      },
-    ]);
-
     const currentMonthData = monthlyRevenue.find(
-      item => item.monthNumber === currentMonth &&
-      item.year === currentYear
+      item => item.monthNumber === currentMonth && item.year === currentYear
     );
-
     const previousMonthData = monthlyRevenue.find(
-      item => item.monthNumber === previousMonth &&
-      item.year === previousYear
+      item => item.monthNumber === previousMonth && item.year === previousYear
     );
 
     const currentRevenue = currentMonthData?.revenue || 0;
@@ -484,7 +551,7 @@ exports.getAdminAnalytics = async (req, res, next) => {
     const revenueTrend = calculatedTrend(currentRevenue, previousRevenue);
     const commissionTrend = calculatedTrend(currentCommission, previousCommission);
     const ordersTrend = calculatedTrend(currentOrders, previousOrders);
-
+     
     const hascurrentOrders = currentOrders > 0;
     const hasCurrentRevenue = currentRevenue > 0;
     const hasCurrentCommission = currentCommission > 0;
@@ -495,8 +562,8 @@ exports.getAdminAnalytics = async (req, res, next) => {
         totalOrders,
         pendingOrders,
         totalProducts,
-        totalRevenue: revenueResults[0]?.totalRevenue || 0,
-        totalPlatformCommission: revenueResults[0]?.totalPlatformCommission || 0,
+        totalRevenue,
+        totalPlatformCommission,
         monthlyRevenue,
         revenueTrend,
         commissionTrend,
@@ -506,7 +573,7 @@ exports.getAdminAnalytics = async (req, res, next) => {
         hasCurrentCommission,
       },
     });
-  } catch (error) {
+  }catch (error) {
     console.error('Failed to get admin analytics', error);
     next(error);
   }
@@ -519,7 +586,7 @@ exports.updateUserRole = async (req, res , next) => {
 
     let status = 'approved';
 
-    if (role === 'Vendor' || role === 'Admin'){
+    if (role === 'Vendor' /*|| role === 'Admin'*/){
       status = 'pending';
     }
 
