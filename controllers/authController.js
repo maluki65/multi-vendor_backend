@@ -214,7 +214,7 @@ exports.updatePassword = async(req, res, next) => {
     if(!isPasswordValid) return next(new createError('Invalid current password!', 422));
 
     const isSamePassword = await bcrypt.compare(newPassword, user.password);
-    if (isSamePassword) return next(new createError('New password must be different', 400));
+    if (isSamePassword) return next(new createError('You cannot use old password as the new password', 400));
 
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 

@@ -16,18 +16,19 @@ const adminProfileShema = new mongoose.Schema({
     country: { type: String, required: true },
   },
 
+  gender: { type: String, required: true },
   phoneNo: { type: String, required: true },
   fullNames: { type:String, required: true, index: true },
   IDPassport: { type: String, required: true, unique: true, index: true },
   nextOfKin: {
     relationship: { type: String, required: true },
-    names: { type: String, reqired: true },
+    names: { type: String, required: true },
     phone: { type: String, required: true },
   },
   avatar: { type: String, default: 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_wordcount_boost&w=740&q=80' },
   avatarId: String,  
 },
- { timeStamps: true }
+ { timestamps: true }
 )
 
 module.exports = mongoose.model('AdminProfile', adminProfileShema);

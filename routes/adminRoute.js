@@ -59,7 +59,7 @@ router.patch('/products/:id/approve', protect, restrictTo('Admin'), approveProdu
 router.patch('/categories/update/:id', protect, restrictTo('Admin'), updateCategory);
 router.patch('/products/:id/reject', protect, restrictTo('Admin'), rejectProducts);
 router.patch('/categories/:id/status', protect, restrictTo('Admin'), toggleCategoryStatus);
-router.patch('/profile', protect, restrictTo('Admin'), updateAdminProfile);
+router.patch('/update/profile', protect, restrictTo('Admin'), updateAdminProfile);
 
 
 router.delete('/delete/user/:userId', protect, restrictTo('Admin'), deleteUser);

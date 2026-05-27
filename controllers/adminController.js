@@ -7,6 +7,7 @@ const removeUndefined = require('../utils/removeUndefined');
 const { sendMail } = require('../utils/nodemailer');
 const mongoose = require('mongoose');
 const Product = require('../models/productModel');
+const ImageKit = require('../config/imgKit');
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -90,43 +91,141 @@ exports.getAdminProfile = async(req, res, next) => {
 
 // On updating Admin profile
 exports.updateAdminProfile = async(req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try{
     const adminId = req.user.id;
 
-    if (!adminId) return next(new createError('Unauthorized access!', 401));
+    const user = await User.findById(adminId);
 
-    const { username, ...profileFields } = req.body;
+    if(!user) {
+      return next(new createError('User not found!', 404));
+    }
 
-    const updateData = removeUndefined(profileFields);
 
-    const updatedProfile = await AdminProfile.findOneAndUpdate(
-      { adminId },
-      updateData,
-      { 
-        new: true,
-        upsert: true,
-        runValidators: true,
+    if (user.role !== 'Admin') {
+      return next(new createError('Only admins can update this profile!', 403))
+    };
+
+    const profile = await AdminProfile.findOne({ adminId });
+
+    if (!profile) {
+      return next(new createError('Admin profile not found!', 404));
+    }
+
+    const flattenObjects = (
+      obj,
+      parent = '',
+      res = {}
+    ) => {
+      for (let key in obj) {
+        const propName = parent
+          ? `${parent}.${key}`
+          : key;
+
+        if (
+          obj[key] !== null &&
+          typeof obj[key] === 'object' &&
+          !Array.isArray(obj[key])
+        ) {
+          flattenObjects(
+            obj[key],
+            propName,
+            res
+          );
+        } else { 
+          res[propName] = obj[key];
+        }
       }
-    );
+
+      return res;
+    };
+
+    const profileUpdateData = {};
+    const userUpdateData = {};
+
+    if (req.body.username !== undefined) {
+      userUpdateData.username = req.body.username;
+    }
+
+    if (req.body.fullNames !== undefined) {
+      profileUpdateData.fullNames = req.body.fullNames;
+    }
+
+    if (req.body.phoneNo !== undefined) {
+      profileUpdateData.phoneNo = req.body.phoneNo;
+    }
+
+    if (req.body.addresses) {
+      Object.assign(
+        profileUpdateData,
+        flattenObjects(
+          req.body.addresses,
+          'addresses'
+        )
+      );
+    }
+
+    if (req.body.nextOfKin) {
+      Object.assign(
+        profileUpdateData,
+        flattenObjects(
+          req.body.nextOfKin,
+          'nextOfKin'
+        )
+      );
+    }
+
+    if (req.body.avatar) {
+      if (profile.avatarId) {
+        try {
+          await ImageKit.deleteFile(
+            profile.avatarId
+          );
+        } catch (error) {
+          console.error(
+            'Failed to delete old avatar',
+            error.message
+          );
+        }
+      }
+
+      profileUpdateData.avatar = req.body.avatar;
+      profileUpdateData.avatarId = req.body.avatarId;
+    }
+
+    if (
+      Object.keys(profileUpdateData).length === 0 &&
+      Object.keys(userUpdateData).length === 0
+    ) {
+      return next(new createError('No valid fileds provided!'), 400);
+    }
 
     let updatedUser = null;
-    if (username) {
+
+    if (
+      Object.keys(userUpdateData).length > 0
+    ) {
       updatedUser = await User.findByIdAndUpdate(
         adminId,
-        { username },
-        { 
-          new: true, 
+        {
+          $set: userUpdateData,
+        },
+        {
+          new: true,
           runValidators: true,
-          session
         }
       );
     }
 
-    await session.commitTransaction();
-    session.endSession();
+    const updatedProfile =  await AdminProfile.findOneAndUpdate(
+      { adminId },
+      {
+        $set: profileUpdateData,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     res.status(200).json({
       status: 'success',
@@ -134,8 +233,6 @@ exports.updateAdminProfile = async(req, res, next) => {
       user: updatedUser || undefined,
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error('Failed to update admin profile', error);
     next(error);
   }
