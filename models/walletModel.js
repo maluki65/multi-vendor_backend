@@ -9,7 +9,7 @@ const VendorWalletSchema = new mongoose.Schema({
     index: true,
   },
 
-  availbaleBalance: {
+  availableBalance: {
     type: Number,
     default: 0,
     min: 0,

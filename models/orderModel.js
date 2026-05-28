@@ -80,6 +80,8 @@ const orderSchema = new mongoose.Schema({
     default: false,
   },
 
+  earningsCreditedAt: Date,
+
   platformCommission:{ type: Number, index: true },
   totalAmount: { type: Number, required: true },
   paymentProvider: { type: String,  default: 'Simulated' },

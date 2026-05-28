@@ -2,6 +2,7 @@ const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
 const BuyerProfile = require('../models/buyerModel');
+const { creditPendingBalance } = require('../services/walletService');
 
 // On vendor getting their orders for the store
 exports.getVendorOrders = async (req, res, next) => {
@@ -233,10 +234,10 @@ exports.updateOrderStatus = async (req, res, next) => {
     };
 
     const adminTransitions = {
-      pending: ['processing', 'shipped', 'completed'],
-      processing: ['pending', 'shipped', 'completed'],
-      shipped: ['pending', 'processing', 'completed'],
-      completed: ['pending', 'processing', 'shipped'],
+      pending: ['processing'/*, 'shipped', 'completed'*/],
+      processing: [/*'pending',*/ 'shipped' /*'completed'*/],
+      shipped: [],
+      completed: [],
     };
 
     const currentStatus = order.orderStatus;
@@ -280,7 +281,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (!allowedTransitions.includes(status)) {
       return next(
         new createError(
-          `Vendor cannot change order from ${currentStatus} to ${status}`, 400
+          `${role} cannot change order from ${currentStatus} to ${status}`, 400
         )
       );
     }
@@ -308,6 +309,13 @@ exports.updateOrderStatus = async (req, res, next) => {
     }
 
     await order.save();
+
+    // On crediting vendor after shipment
+    if (
+      status === 'shipped' && !order.earningsCredited
+    ) {
+      await creditPendingBalance(order);
+    }
 
     res.status(200).json({
       status: 'success',

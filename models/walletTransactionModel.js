@@ -16,6 +16,7 @@ const walletTransactionSchema = new mongoose.Schema({
   },
 
   type: {
+    type: String,
     enum: [
       'sale',
       'withdrawal_request',
@@ -42,7 +43,7 @@ const walletTransactionSchema = new mongoose.Schema({
   referenceId: mongoose.Schema.Types.ObjectId,
 
   referenceModel: {
-    tyep: String,
+    type: String,
     enum: [
       'Order',
       'withdrawalRequest',
@@ -61,6 +62,12 @@ const walletTransactionSchema = new mongoose.Schema({
       'reversed',
     ],
     default: 'completed',
+  },
+
+  direction: {
+    type: String,
+    enum: ['credit', 'debit'],
+    required: true,
   },
 
   metadata: mongoose.Schema.Types.Mixed,
