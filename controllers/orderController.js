@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/orderModel');
 const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
@@ -199,7 +200,11 @@ exports.getOrderbyId = async (req, res, next) => {
 
 // On updating order status for Buyer, Vendor and Buyer
 exports.updateOrderStatus = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
+    session.startTransaction();
+
     const userId = req.user.id;
     const role = req.user.role;
 
@@ -207,19 +212,30 @@ exports.updateOrderStatus = async (req, res, next) => {
     const { status } = req.body;
 
     const validStatuses = [
-      'pending',
-      'processing',
-      'shipped',
-      'completed',
+      'pending', 
+      'processing', 
+      'shipped', 
+      'completed'
     ];
 
     if (!validStatuses.includes(status)) {
-      return next(new createError('Invalid order status', 400));
+      throw new createError('Invalid order status', 400);
     }
 
-    const order = await Order.findById(orderId);
-    if(!order) {
-      return next(new createError('Order not found', 404));
+    const order = await Order.findById(orderId).session(session);
+
+    if (!order) {
+      throw new createError('Order not found', 404);
+    }
+
+    if (order.orderStatus === status) {
+      await session.commitTransaction();
+
+      return res.status(200).json({
+        status: 'success',
+        message: `Order already ${status}`,
+        order,
+      });
     }
 
     const vendorTransitions = {
@@ -229,13 +245,13 @@ exports.updateOrderStatus = async (req, res, next) => {
       completed: [],
     };
 
-    const buyerTransitions = { 
+    const buyerTransitions = {
       shipped: ['completed'],
     };
 
     const adminTransitions = {
-      pending: ['processing'/*, 'shipped', 'completed'*/],
-      processing: [/*'pending',*/ 'shipped' /*'completed'*/],
+      pending: ['processing'],
+      processing: ['shipped'],
       shipped: [],
       completed: [],
     };
@@ -244,87 +260,96 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     let allowedTransitions = [];
 
-    if (role === 'Vendor'){
+    if (role === 'Vendor') {
       const vendorProfile = await VendorProfile.findOne({
         vendorId: userId,
-      });
+      }).session(session);
 
-      if(!vendorProfile) {
-        return next(new createError('Vendor profile not found', 404));
+      if (!vendorProfile) {
+        throw new createError('Vendor profile not found', 404);
       }
 
-      if (order.vendorId.toString() !== vendorProfile._id.toString()){
-        return next(
-          new createError(
-            'You are not allowed to update this order!', 403
-          )
-        );
+      if (order.vendorId.toString() !== vendorProfile._id.toString()) {
+        throw new createError('You are not allowed to update this order!', 403);
       }
 
       allowedTransitions = vendorTransitions[currentStatus] || [];
-    } else if (role === 'Buyer') {
+    }
+
+    else if (role === 'Buyer') {
       if (order.buyerId.toString() !== userId.toString()) {
-        return next(
-          new createError(
-            'You are not allowed to update this order!', 403
-          )
-        );
+        throw new createError('You are not allowed to update this order!', 403);
       }
 
       allowedTransitions = buyerTransitions[currentStatus] || [];
-    } else if (role === 'Admin') {
+    }
+
+    else if (role === 'Admin') {
       allowedTransitions = adminTransitions[currentStatus] || [];
-    }  else {
-      return next(new createError('Unathorized access!', 403));
+    }
+
+    else {
+      throw new createError('Unauthorized access!', 403);
     }
 
     if (!allowedTransitions.includes(status)) {
-      return next(
-        new createError(
-          `${role} cannot change order from ${currentStatus} to ${status}`, 400
-        )
+      throw new createError(
+        `${role} cannot change order from ${currentStatus} to ${status}`,
+        400
       );
     }
 
     order.statusHistory.push({
-      from : currentStatus,
+      from: currentStatus,
       to: status,
       changedBy: userId,
       role,
       date: new Date(),
     });
 
-    order.orderStatus = status;
-    
+    const updateData = {
+      orderStatus: status,
+      statusHistory: order.statusHistory,
+    };
+
     if (status === 'processing') {
-      order.processingAt = new Date();
-    }
-    
-    if (status === 'shipped' && !order.shippedAt) {
-      order.shippedAt = new Date();
-    }
-    
-    if (status === 'completed' && !order.completedAt) {
-      order.completedAt = new Date();
+      updateData.processingAt = new Date();
     }
 
-    await order.save();
-
-    // On crediting vendor after shipment
-    if (
-      status === 'shipped' && !order.earningsCredited
-    ) {
-      await creditPendingBalance(order);
+    if (status === 'shipped') {
+      updateData.shippedAt = new Date();
     }
 
-    res.status(200).json({
+    if (status === 'completed') {
+      updateData.completedAt = new Date();
+    }
+
+    await Order.updateOne(
+      { _id: order._id },
+      { $set: updateData },
+      { session }
+    );
+
+    if (status === 'shipped' && !order.earningsCredited) {
+      await creditPendingBalance(order._id, session);
+    }
+
+    const updatedOrder = await Order.findById(order._id).session(session);
+
+    await session.commitTransaction();
+
+    return res.status(200).json({
       status: 'success',
-      message: `Order status updated to ${status}`,
-      order,
+      message: `Order updated to ${status}`,
+      order: updatedOrder,
     });
+
   } catch (error) {
-    console.error('Failed tp update order status', error);
+    await session.abortTransaction();
+    console.error('Failed to update order status', error);
     next(error);
+  } finally {
+    session.endSession();
   }
 };
 

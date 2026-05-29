@@ -1,84 +1,86 @@
 const mongoose = require('mongoose');
+const Order = require('../models/orderModel');
 const Wallet = require('../models/walletModel');
 const createError = require('../utils/appError');
 const WalletTransaction = require('../models/walletTransactionModel');
 const WithdrawalRequest = require('../models/withdrawalRequestModel');
 
 // On Crediting pending balance
-exports.creditPendingBalance = async (order) => {
-  const session = await mongoose.startSession();
+exports.creditPendingBalance = async (orderId, session) => {
+  const order = await Order.findById(orderId).session(session);
 
-  try {
-    session.startTransaction();
-
-    if (order.earningsCredited) {
-      throw new createError('Order earnings already credited', 400);
-    }
-
-    let wallet = await Wallet.findOne({
-      vendorId: order.vendorId,
-    }).session(session);
-
-    if (!wallet) {
-      wallet = await Wallet.create([{
-        vendorId: order.vendorId,
-      }], { session });
-
-      wallet = wallet[0];
-    }
-
-    const balanceBefore = wallet.pendingBalance;
-
-    wallet.pendingBalance += order.vendorEarnings;
-
-    wallet.totalEarnings += order.vendorEarnings;
-
-    wallet.totalCommissionGenerated += order.platformCommission || 0;
-
-    const balanceAfter = wallet.pendingBalance;
-
-    // on creating transaction log
-    await WalletTransaction.create([{
-      vendorId: order.vendorId,
-      walletId: wallet._id,
-
-      type: 'sale',
-      direction: 'credit',
-
-      amount: order.vendorEarnings,
-
-      balanceBefore,
-      balanceAfter,
-
-      referenceId: order._id,
-      referenceModel: 'Order',
-
-      description: `Order earnings credited for order ${order.orderNumber}`,
-
-      status: 'completed',
-
-      metadata: {
-        orderNumber: order.orderNumber,
-        paymentReference: order.paymentReference,
-      },
-    }], { session });
-
-    order.earningsCredited = true;
-    order.earningsCreditedAt = new Date();
-
-    await wallet.save({ session });
-    await order.save({ session });
-
-    await session.commitTransaction();
-
-    return wallet;
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Failed to create prnding balance', error);
-    throw error;
-  } finally {
-    session.endSession();
+  if (!order) {
+    throw new createError('Order not found', 404);
   }
+
+  if (order.earningsCredited) {
+    return;
+  }
+
+  let wallet = await Wallet.findOne({
+    vendorId: order.vendorId,
+  }).session(session);
+
+  if (!wallet) {
+    const created = await Wallet.create(
+      [{ vendorId: order.vendorId }],
+      { session }
+    );
+
+    wallet = created[0];
+  }
+
+  const balanceBefore = wallet.pendingBalance;
+
+  wallet.pendingBalance += order.vendorEarnings;
+  wallet.totalEarnings += order.vendorEarnings;
+  wallet.totalCommissionGenerated += order.platformCommission || 0;
+
+  const balanceAfter = wallet.pendingBalance;
+
+  await WalletTransaction.create([{
+    vendorId: order.vendorId,
+    walletId: wallet._id,
+
+    type: 'sale',
+    direction: 'credit',
+
+    amount: order.vendorEarnings,
+
+    balanceBefore,
+    balanceAfter,
+
+    referenceId: order._id,
+    referenceModel: 'Order',
+
+    description: `Order earnings credited for ${order.orderNumber}`,
+
+    status: 'completed',
+
+    metadata: {
+      orderNumber: order.orderNumber,
+      paymentReference: order.paymentReference,
+    },
+  }], { session });
+
+  const ONE_HOUR = 60 * 60 * 1000;
+  //const THREE_DAYS = 3 * 25 * 60 * 60 * 1000;
+
+  await Order.updateOne(
+    { _id: order._id },
+    {
+      $set: {
+        earningsCredited: true,
+        earningsCreditedAt: new Date(),
+        settlementDate: new Date(Date.now() + ONE_HOUR),
+      },
+    },
+    { session }
+  );
+
+  await wallet.save({ session });
+
+  return wallet;
 };
 
 // On reserving withdrawals
@@ -112,9 +114,9 @@ exports.reserveWithdrawals = async ({
       wallet.dailyWithdrawalDate.toDateString() === today
     ) {
       if (
-        wallet.dailyWithdrawalAmount += amount > MAX_DAILY_AMOUNT
+        wallet.dailyWithdrawalAmount + amount > MAX_DAILY_AMOUNT
       ) {
-        if (
+        throw new createError(
           'Maximum daily withdrawal limit exceeded', 400
         );
       }
@@ -187,7 +189,7 @@ exports.reserveWithdrawals = async ({
   }
 }
 
-exports.releseReservedFunds = async (
+exports.releaseReservedFunds = async (
   withdrawalRequest,
   rejectionReason = ''
 ) => {
@@ -333,6 +335,6 @@ exports.completeWithdrawal = async ({
     console.error('Failed to complete withdrawal', error);
     throw error;
   } finally {
-    session.endTransaction();
+    session.endSession();
   }
 };

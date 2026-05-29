@@ -80,7 +80,22 @@ const orderSchema = new mongoose.Schema({
     default: false,
   },
 
-  earningsCreditedAt: Date,
+  earningsCreditedAt: {
+    type: Date
+  },
+
+  settled: {
+    type: Boolean,
+    default: false,
+  },
+
+  settlementDate: {
+    type: Date
+  },
+
+  settledAt: {
+    type: Date
+  },
 
   platformCommission:{ type: Number, index: true },
   totalAmount: { type: Number, required: true },

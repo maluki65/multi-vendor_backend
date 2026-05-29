@@ -26,6 +26,7 @@ const walletTransactionSchema = new mongoose.Schema({
       'adjustment',
       'commission',
       'reserve_release',
+      'settlement'
     ],
     required: true,
   },

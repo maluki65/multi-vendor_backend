@@ -15,6 +15,7 @@ const ImgKitAuth = require('./utils/imagekitAuth.js');
 const CommonRoutes = require('./routes/commonRoutes.js');
 const CheckOutRoutes = require('./routes/checkoutRoute.js');
 const WishlistRoutes = require('./routes/wishlistRoute.js');
+const startSettlementCron = require('./services/settelmentCronJob.js');
 
 const app = express();
 app.use(express.json());
@@ -49,6 +50,8 @@ app.use('/v1/api/wishlist', WishlistRoutes);
 app.use(globalErrorHandler);
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log(`Database connected to ${mongoose.connection.name} at port ${PORT}`)).catch((error) => console.log('Failed to connect to database', error));
+
+startSettlementCron();
 
 app.listen(process.env.PORT || PORT, () => {
   console.log(`Server started at port: ${PORT}`);
