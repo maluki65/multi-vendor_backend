@@ -5,7 +5,7 @@ const createError = require('../utils/appError');
 const WalletTransaction = require('../models/walletTransactionModel');
 const WithdrawalRequest = require('../models/withdrawalRequestModel');
 
-// On Crediting pending balance
+// On Crediting pending balance (called after buyer marks order as complete: moves credits vendorEarnings to reservedBal)
 exports.creditPendingBalance = async (orderId, session) => {
   const order = await Order.findById(orderId).session(session);
 
@@ -83,8 +83,8 @@ exports.creditPendingBalance = async (orderId, session) => {
   return wallet;
 };
 
-// On reserving withdrawals
-exports.reserveWithdrawals = async ({ 
+// On reserving withdrawals (called when vendor request a withdrawal request: moves funds from available bal to reserved bal)
+exports.reserveWithdrawalFunds = async ({ 
   vendorId, 
   amount, 
   payoutSnapshot 
@@ -169,7 +169,7 @@ exports.reserveWithdrawals = async ({
       balanceAfter,
 
       referenceId: withdrawal[0]._id,
-      referenceModel: 'withdrawalRequest',
+      referenceModel: 'WithdrawalRequest',
 
       description: 'Withdrawal funds reserved',
       status: 'completed',
@@ -189,6 +189,7 @@ exports.reserveWithdrawals = async ({
   }
 }
 
+// On releasing funds (called when withdrawal request is rejeted, cancelled or fails)
 exports.releaseReservedFunds = async (
   withdrawalRequest,
   rejectionReason = ''
@@ -197,6 +198,10 @@ exports.releaseReservedFunds = async (
 
   try {
     session.startTransaction();
+
+    if(withdrawalRequest.status === 'rejected') {
+      throw new createError('Withdrawal already rejected', 400);
+    }
 
     const wallet = await Wallet.findById(
       withdrawalRequest.walletId
@@ -207,6 +212,14 @@ exports.releaseReservedFunds = async (
     }
 
     const balanceBefore = wallet.availableBalance;
+
+    if (wallet.reservedBalance < withdrawalRequest.amount) {
+      throw new createError('Reserved balance insufficient', 400);
+    }
+
+    if (withdrawalRequest.status !== 'pending' && withdrawalRequest.status !== 'approved') {
+      throw new createError('Cannot reject this withdarawal', 400);
+    }
 
     wallet.reservedBalance -= withdrawalRequest.amount;
 
@@ -231,7 +244,7 @@ exports.releaseReservedFunds = async (
       balanceAfter,
 
       referenceId: withdrawalRequest._id,
-      referenceModel: 'withdrawalRequest',
+      referenceModel: 'WithdrawalRequest',
 
       description: 'Reserved withdrawal funds released',
 
@@ -253,6 +266,58 @@ exports.releaseReservedFunds = async (
   }
 }
 
+// On approving withdrawal request
+exports.approveWithdrawal = async ({
+  withdrawalRequest,
+  adminId,
+  adminNotes = '',
+}) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    if (withdrawalRequest.status === 'approved') {
+      throw new createError('Withdrawal request already approved', 400);
+    }
+
+    if (withdrawalRequest.status === 'paid') {
+      throw new createError('Withdrawal request has already been paid', 400);
+    } 
+
+    if (withdrawalRequest.status === 'rejected') {
+      throw new createError('Cannot approve a rejected withdrawal request', 400);
+    } 
+
+    if (withdrawalRequest.status !== 'pending') {
+      throw new createError(
+        `Cannot approve withdrawal with status ${withdrawalRequest.status}`,
+        400
+      );
+    }
+
+    withdrawalRequest.status = 'approved';
+    withdrawalRequest.approvedBy = adminId;
+
+    if (adminNotes) {
+      withdrawalRequest.adminNotes = adminNotes;
+    }
+
+    await withdrawalRequest.save({ session });
+
+    await session.commitTransaction();
+
+    return withdrawalRequest;    
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Failed to approve withdrawal', error);
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+// On completing withdrawal request (called after successfull vendor payment through m-pesa)
 exports.completeWithdrawal = async ({
   withdrawalRequest,
   adminId,
@@ -263,6 +328,14 @@ exports.completeWithdrawal = async ({
   try {
     session.startTransaction();
 
+    if(withdrawalRequest.status === 'paid') {
+      throw new createError('Withdrawal already paid', 400);
+    }
+
+    if (withdrawalRequest.status !== 'approved') {
+      throw new createError('Withdrawal must be approved before payout', 400);
+    }
+
     const wallet = await Wallet.findById(
       withdrawalRequest.walletId
     ).session(session);
@@ -272,6 +345,14 @@ exports.completeWithdrawal = async ({
     }
 
     const balanceBefore = wallet.reservedBalance;
+
+    if (wallet.reservedBalance < withdrawalRequest.amount) {
+      throw new createError('Reserved balance insufficient', 400)
+    }
+
+    if (withdrawalRequest.status !== 'approved') {
+      throw new createError('Withdrawal must be approved first', 400);
+    }
 
     wallet.reservedBalance -= withdrawalRequest.amount;
 

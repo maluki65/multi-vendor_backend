@@ -47,7 +47,7 @@ const walletTransactionSchema = new mongoose.Schema({
     type: String,
     enum: [
       'Order',
-      'withdrawalRequest',
+      'WithdrawalRequest',
       'Refund'
     ],
   },

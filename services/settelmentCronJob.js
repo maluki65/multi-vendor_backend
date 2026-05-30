@@ -14,6 +14,7 @@ const runSettlement = async () => {
     session.startTransaction();
 
     const maturedOrders = await Order.find({
+      orderStatus: 'completed',
       earningsCredited: true,
       settled: false,
       settlementDate: { $lte: new Date() },

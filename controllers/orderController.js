@@ -330,7 +330,7 @@ exports.updateOrderStatus = async (req, res, next) => {
       { session }
     );
 
-    if (status === 'shipped' && !order.earningsCredited) {
+    if (status === 'completed' && !order.earningsCredited) {
       await creditPendingBalance(order._id, session);
     }
 
