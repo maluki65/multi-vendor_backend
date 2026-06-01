@@ -122,7 +122,7 @@ exports.reserveWithdrawalFunds = async ({
       }
     }
 
-    if (wallet.lastWithdrawalAt) {
+    /*if (wallet.lastWithdrawalAt) {
       const diff = Date.now() - wallet.lastWithdrawalAt.getTime();
 
       const hours = diff / (1000 * 60 * 60);
@@ -132,7 +132,7 @@ exports.reserveWithdrawalFunds = async ({
           'Withdrawal cooldown active. Try again later.', 400
         );
       }
-    }
+    }*/
 
     if (wallet.availableBalance < amount) {
       throw new createError('Insufficient available balance', 400);

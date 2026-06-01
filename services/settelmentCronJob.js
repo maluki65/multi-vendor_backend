@@ -100,8 +100,9 @@ const runSettlement = async () => {
 };
 
 const startSettlementCron = () => {
-  //runSettlement()
+  runSettlement()
 
+  // run after 10 secs  ('*/10 * * * *  - 10 mins)
   cron.schedule('*/10 * * * *', async() => {
     await runSettlement();
   });
