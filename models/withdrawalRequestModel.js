@@ -49,6 +49,12 @@ const withdrawalRequestSchema = new mongoose.Schema({
     ref: 'Users',
   },
 
+  vendorName: {
+    type:String,
+    required: true,
+    trim: true,
+    index: true,
+  },
   paidAt: Date,
   rejectionReason: String,
   adminNotes: String,

@@ -87,6 +87,7 @@ exports.creditPendingBalance = async (orderId, session) => {
 exports.reserveWithdrawalFunds = async ({ 
   vendorId, 
   amount, 
+  vendorName,
   payoutSnapshot 
  }) => {
   const session = await mongoose.startSession();
@@ -149,6 +150,7 @@ exports.reserveWithdrawalFunds = async ({
     const withdrawal = await WithdrawalRequest.create([{
       vendorId,
       wallet: wallet._id,
+      vendorName,
 
       amount,
 

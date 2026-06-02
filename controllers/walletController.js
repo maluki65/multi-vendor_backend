@@ -26,6 +26,7 @@ exports.requestWithdrawal = async (req, res, next) => {
 
     const withdrawal = await reserveWithdrawalFunds({
       vendorId: vendorProfile._id,
+      vendorName: vendorProfile.businessInfo.legalName,
       amount,
       payoutSnapshot: {
         method: 'mpesa',
@@ -86,7 +87,8 @@ exports.getVendorWithdrawalHistory = async(req, res, next) => {
     const userId = req.user.id;
 
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parserInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    //const search = req.query.search || '';
     const skip = (page - 1) * limit;
 
     const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
@@ -98,6 +100,23 @@ exports.getVendorWithdrawalHistory = async(req, res, next) => {
     const filter = {
       vendorId: vendorProfile._id,
     };
+
+    /*if (search) {
+      filter.$or = [
+        {
+          transactionRerence: {
+            $regex: search,
+            $options: '1',
+          },
+        },
+        {
+          status: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+      ];
+    }*/
 
     const totalWithrawals = await WithdrawalRequest.countDocuments(filter);
 
@@ -129,40 +148,49 @@ exports.getVendorWithdrawalHistory = async(req, res, next) => {
   }
 }
 
-// On getting all withdrawals for admin
-exports.getAllWithdrawalRequests = async (req, res, next) => {
+// On getting all pending withdrawals for admin
+exports.getPendingWithdrawalRequests = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;    
 
-    const filter = {};
+    const filter = {
+      status: 'pending',
+    };
 
-    if (req.query.status){
-      filter.status = req.query.status;
-    }
-
-    if (req.query.vendorId) {
-      filter.vendorId = req.query.vendorId;
-    }
+    /*if (search) {
+      filter.$or = [
+        {
+          vendorName: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+        {
+          transactionReference: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+      ];
+    }*/
 
     const totalResults = await WithdrawalRequest.countDocuments(filter);
 
     const withdrawals =  await WithdrawalRequest.find(filter)
-     .populate({
-      path: 'vendorId',
-      select : 'businessInfo.legalName',
-     })
      .sort({ createdAt: -1 })
      .skip(skip)
      .limit(limit);
+
+    const totalPages = Math.ceil(totalResults / limit);
 
     res.status(200).json({
       status: 'success',
 
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(totalResults / limit),
+        totalPages,
         totalResults,
         limit,
         hasNextPage: page * limit < totalResults,
@@ -178,36 +206,11 @@ exports.getAllWithdrawalRequests = async (req, res, next) => {
   }
 }
 
-// On getting a single withdrawal request
-exports.getWithdrawalRequest = async (req, res, next) => {
-  try {
-    const { withdrawalId } = req.body;
-
-    const withdrawal = await WithdrawalRequest.findById(withdrawalId)
-    .populate({
-      path: 'vendorId',
-      select : 'businessInfo.legalName',
-     })
-    .populate('approvedBy');
-
-    if (!withdrawal) {
-      throw new createError('Withdrawal request not found!',404);
-    }
-
-    res.status(200).json({
-      status: 'success',
-      withdrawal,
-    })
-  } catch (error) {
-    console.error('Failed to get withdrawal requests', error);
-    next(error)
-  }
-}
-
 exports.approveWithdrawalRequest = async (req, res, next) => {
   try{
     const adminId = req.user.id;
-    const { withdrawalId, adminNotes } = req.body;
+    const withdrawalId = req.params;
+    const adminNotes  = req.body;
 
     const withdrawalRequest = await WithdrawalRequest.findById(withdrawalId);
 
@@ -236,7 +239,8 @@ exports.approveWithdrawalRequest = async (req, res, next) => {
 
 exports.rejectWithdrawalRequest = async (req, res, next) => {
   try {
-    const { withdrawalId, rejectionReason } = req.body;
+    const withdrawalId = req.params;
+    const rejectionReason  = req.body;
 
     const withdrawalRequest = await WithdrawalRequest.findById(withdrawalId);
 
