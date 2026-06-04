@@ -18,7 +18,7 @@ exports.requestWithdrawal = async (req, res, next) => {
       throw new createError('Vendor profile not found', 404);
     }
 
-    const { amount, phoneNumber, accountName } = req.body;
+    const { amount, tillNumber, accountName } = req.body;
 
     if (!amount) {
       throw new createError('Withdrawal amount is required!', 400);
@@ -30,7 +30,7 @@ exports.requestWithdrawal = async (req, res, next) => {
       amount,
       payoutSnapshot: {
         method: 'mpesa',
-        phoneNumber,
+        tillNumber,
         accountName,
       },
     });
@@ -215,7 +215,7 @@ exports.approveWithdrawalRequest = async (req, res, next) => {
     const withdrawalRequest = await WithdrawalRequest.findById(withdrawalId);
 
     if (!withdrawalRequest) {
-      throw new createError('withdrawal request ot found!', 404);
+      throw new createError('withdrawal request not found!', 404);
     }
 
     const updatedWithdrawal = await approveWithdrawal({
