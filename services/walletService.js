@@ -85,6 +85,7 @@ exports.creditPendingBalance = async (orderId, session) => {
 
 // On reserving withdrawals (called when vendor request a withdrawal request: moves funds from available bal to reserved bal)
 exports.reserveWithdrawalFunds = async ({ 
+  walletId,
   vendorId, 
   amount, 
   vendorName,
@@ -95,7 +96,7 @@ exports.reserveWithdrawalFunds = async ({
   try {
     session.startTransaction();
 
-    const wallet = await Wallet.findOne({ vendorId }).session(session);
+    const wallet = await Wallet.findOne(walletId).session(session);
 
     if (!wallet) {
       throw new createError('Wallet not found!', 404);
@@ -149,7 +150,7 @@ exports.reserveWithdrawalFunds = async ({
     // on creating a withdrawal request
     const withdrawal = await WithdrawalRequest.create([{
       vendorId,
-      wallet: wallet._id,
+      walletId: wallet._id,
       vendorName,
 
       amount,

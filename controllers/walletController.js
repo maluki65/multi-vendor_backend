@@ -18,13 +18,21 @@ exports.requestWithdrawal = async (req, res, next) => {
       throw new createError('Vendor profile not found', 404);
     }
 
+    const wallet = await Wallet.findOne({ vendorId: vendorProfile._id });
+
+    if (!wallet) {
+      throw new createError('Wallet not found', 404);
+    }
+
     const { amount, tillNumber, accountName } = req.body;
 
     if (!amount) {
       throw new createError('Withdrawal amount is required!', 400);
     }
+    
 
     const withdrawal = await reserveWithdrawalFunds({
+      walletId: wallet._id,
       vendorId: vendorProfile._id,
       vendorName: vendorProfile.businessInfo.legalName,
       amount,
