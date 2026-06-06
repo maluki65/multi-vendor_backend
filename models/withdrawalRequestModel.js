@@ -1,6 +1,8 @@
 const mongoose =  require('mongoose');
+const generateRequestUUID = require('../utils/generateRequestId');
 
 const withdrawalRequestSchema = new mongoose.Schema({
+  
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendorProfile',
@@ -12,6 +14,12 @@ const withdrawalRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wallet',
     required: true,
+  },
+
+  requestUUID: {
+    type: String,
+    uniques: true,
+    index: true,
   },
 
   amount: {
@@ -60,5 +68,13 @@ const withdrawalRequestSchema = new mongoose.Schema({
   adminNotes: String,
   transactionReference: String,
 }, { timestamps: true });
+
+withdrawalRequestSchema.pre('save', function (next) {
+  if (!this.requestUUID) {
+    this.requestUUID = generateRequestUUID();
+  }
+
+  next();
+});
 
 module.exports = mongoose.model('WithdrawalRequest', withdrawalRequestSchema);
