@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Wallet = require('../models/walletModel');
 const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
+const WalletTransaction = require('../models/walletTransactionModel');
 const WithdrawalRequest = require('../models/withdrawalRequestModel');
 const { reserveWithdrawalFunds, approveWithdrawal, releaseReservedFunds } = require('../services/walletService');
 
@@ -85,6 +86,31 @@ exports.getWallet = async (req, res, next) => {
     })
   } catch (error) {
     console.error('Failed to get wallet', error);
+    next(error);
+  }
+}
+
+// Og getting vendor wallet transactions
+exports.getWalletTransactions = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const vendorProfile = await VendorProfile.findOne({ vendorId: userId });
+
+    if (!vendorProfile) {
+      throw new createError('Vendor profile not found', 404);
+    }
+
+    const walletTransactions = await WalletTransaction.find({ vendorId: vendorProfile._id })
+     .sort({ createdAt: -1 })
+     .limit(10);
+     
+    res.status(200).json({
+      status: 'success',
+      walletTransactions
+    });
+  } catch (error) {
+    console.error('Failed to get wallet transactions', error);
     next(error);
   }
 }

@@ -96,7 +96,7 @@ exports.reserveWithdrawalFunds = async ({
   try {
     session.startTransaction();
 
-    const wallet = await Wallet.findOne(walletId).session(session);
+    const wallet = await Wallet.findById(walletId).session(session);
 
     if (!wallet) {
       throw new createError('Wallet not found!', 404);
