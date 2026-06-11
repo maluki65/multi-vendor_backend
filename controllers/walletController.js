@@ -187,15 +187,23 @@ exports.getPendingWithdrawalRequests = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
+    const sort = req.query.sort || 'latest';
+    const search = req.query.search || '';
     const skip = (page - 1) * limit;    
 
     const filter = {
       status: 'pending',
     };
 
-    /*if (search) {
+    if (search) {
       filter.$or = [
         {
+          requestUUID: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+        /*{
           vendorName: {
             $regex: search,
             $options: 'i',
@@ -206,14 +214,33 @@ exports.getPendingWithdrawalRequests = async (req, res, next) => {
             $regex: search,
             $options: 'i',
           },
-        },
+        },*/
       ];
-    }*/
+    }
+
+    let sortQuery = { createdAt: -1 };
+
+    switch (sort) {
+      case 'oldest':
+        sortQuery = { createdAt: 1 };
+        break;
+
+      case 'amount-high':
+        sortQuery = { amount: -1 };
+        break;
+
+      case 'amount-low':
+        sortQuery = { amount: 1 };
+        break;
+
+      default:
+        sortQuery = { createdAt: -1 }
+    }
 
     const totalResults = await WithdrawalRequest.countDocuments(filter);
 
     const withdrawals =  await WithdrawalRequest.find(filter)
-     .sort({ createdAt: -1 })
+     .sort(sortQuery)
      .skip(skip)
      .limit(limit);
 
@@ -273,8 +300,8 @@ exports.approveWithdrawalRequest = async (req, res, next) => {
 
 exports.rejectWithdrawalRequest = async (req, res, next) => {
   try {
-    const withdrawalId = req.params;
-    const rejectionReason  = req.body;
+    const { withdrawalId } = req.params;
+    const { rejectionReason }  = req.body;
 
     const withdrawalRequest = await WithdrawalRequest.findById(withdrawalId);
 
