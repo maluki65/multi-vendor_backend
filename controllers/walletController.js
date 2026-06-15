@@ -4,7 +4,7 @@ const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
 const WalletTransaction = require('../models/walletTransactionModel');
 const WithdrawalRequest = require('../models/withdrawalRequestModel');
-const { reserveWithdrawalFunds, approveWithdrawal, releaseReservedFunds } = require('../services/walletService');
+const { reserveWithdrawalFunds, approveWithdrawal, releaseReservedFunds, completeWithdrawal } = require('../services/walletService');
 
 // On vendor withdrawal request
 exports.requestWithdrawal = async (req, res, next) => {
@@ -270,8 +270,8 @@ exports.getPendingWithdrawalRequests = async (req, res, next) => {
 exports.approveWithdrawalRequest = async (req, res, next) => {
   try{
     const adminId = req.user.id;
-    const withdrawalId = req.params;
-    const adminNotes  = req.body;
+    const { withdrawalId }  = req.params;
+    const { adminNotes }  = req.body;
 
     const withdrawalRequest = await WithdrawalRequest.findById(withdrawalId);
 
@@ -286,6 +286,12 @@ exports.approveWithdrawalRequest = async (req, res, next) => {
     });
 
     // Initialize M-pesa B2C here then call completeWithdrawal after success payment
+    
+    const finishWithdrawal = await completeWithdrawal({
+      withdrawalRequest,
+      adminId,
+      transactionReference: 'TestingRef',
+    })
 
     res.status(200).json({
       status: 'success',

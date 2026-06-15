@@ -301,6 +301,7 @@ exports.approveWithdrawal = async ({
 
     withdrawalRequest.status = 'approved';
     withdrawalRequest.approvedBy = adminId;
+    //withdrawalRequest.paidAt = Date.now();
 
     if (adminNotes) {
       withdrawalRequest.adminNotes = adminNotes;
