@@ -117,7 +117,7 @@ exports.getAllOrders = async(req, res, next) => {
 
     const totalOrders = await Order.countDocuments(query);
     
-    const orders = await Order.find()
+    const orders = await Order.find(query)
      .populate({
       path: 'buyerId',
       select:'username email',

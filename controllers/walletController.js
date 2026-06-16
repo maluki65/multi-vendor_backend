@@ -187,13 +187,18 @@ exports.getPendingWithdrawalRequests = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
+    const status = req.query.status || 'pending';
     const sort = req.query.sort || 'latest';
     const search = req.query.search || '';
     const skip = (page - 1) * limit;    
 
     const filter = {
-      status: 'pending',
+      status,
     };
+
+    /*if(status !== 'all') {
+      filter.status = status;
+    }*/
 
     if (search) {
       filter.$or = [

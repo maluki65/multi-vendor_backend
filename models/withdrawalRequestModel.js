@@ -18,7 +18,7 @@ const withdrawalRequestSchema = new mongoose.Schema({
 
   requestUUID: {
     type: String,
-    uniques: true,
+    unique: true,
     index: true,
   },
 
