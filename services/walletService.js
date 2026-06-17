@@ -63,8 +63,8 @@ exports.creditPendingBalance = async (orderId, session) => {
     },
   }], { session });
 
-  const ONE_HOUR = 60 * 60 * 1000;
-  //const THREE_DAYS = 3 * 25 * 60 * 60 * 1000;
+  //const ONE_HOUR = 60 * 60 * 1000;
+  const THREE_DAYS = 3 * 25 * 60 * 60 * 1000;
 
   await Order.updateOne(
     { _id: order._id },
@@ -72,7 +72,7 @@ exports.creditPendingBalance = async (orderId, session) => {
       $set: {
         earningsCredited: true,
         earningsCreditedAt: new Date(),
-        settlementDate: new Date(Date.now() + ONE_HOUR),
+        settlementDate: new Date(Date.now() + THREE_DAYS),
       },
     },
     { session }
