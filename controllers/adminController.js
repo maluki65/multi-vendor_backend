@@ -8,6 +8,7 @@ const { sendMail } = require('../utils/nodemailer');
 const mongoose = require('mongoose');
 const Product = require('../models/productModel');
 const ImageKit = require('../config/imgKit');
+const Verification = require('../models/verifications');
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -341,27 +342,71 @@ exports.approveVendor = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const vendor = await User.findOneAndUpdate(
-      { _id: id, role: 'Vendor'},
-      { status: 'approved', rejectionreason: null },
-      { new: true }
-    ).select('-password');
+    const vendor = await User.findOne({
+      _id: id,
+      role: 'Vendor',
+    }).select('-password');
 
-    if (!vendor) return next(new createError('Vendor not found', 404));
+    if (!vendor) {
+      return next(new createError('Vendor not found!.', 404));
+    }
 
-    /* On sending approve email
+    const verification = await Verification.findOne({
+      verificationId: id,
+    });
+
+    const errors = [];
+
+    if(!verification) {
+      errors.push('Verification record not found.');
+    } else {
+      if (
+        !Array.isArray(verification.verificationFiles) || verification.verificationFiles.length === 0
+      ) {
+        errors.push('No verification documents uploaded.');
+      }
+
+      if (!verification.signature?.trim()) {
+        errors.push('Signature is missing.');
+      }
+
+      if (!verification.termsConditions){
+        errors.push('Terms & Conditions have not been accepted.');
+      }
+    }
+
+    if (errors.length) {
+      return next(
+        new createError(
+          `Vendor cannot be approved: \n${errors.join('\n')}`, 400
+        )
+      );
+    }
+
+    vendor.status = 'approved';
+    vendor.rejectionReason = null;
+
+    await vendor.save();
+
+    /*
     await sendMail({
       email: vendor.email,
       subject: 'Vendor account approved',
-      message: `<h2> Congratulations ${vendor.storeName}!</h2>
-      <p>Your vendor account has been approved. You can now start listing your products on our marketplace.</p>`
-    });*/
+      message: `
+        <h2>Congratulations ${vendor.storeName}!</h2>
+        <p>Your vendor account has been approved.</p>
+        <p>You can now start listing your products on the marketplace.</p>
+      `,
+    });
+    */
 
     res.status(200).json({
       status: 'success',
-      message: `${vendor.storeName} has been approved as a vendor`, vendor
+      message: `${vendor?.storeName} has been approved as a vendor`,
+      vendor,
     });
   } catch (error) {
+    console.error('Vendor approval failed:'. error);
     next(error);
   }
 };
@@ -374,8 +419,14 @@ exports.rejectVendor = async (req, res, next) => {
 
     const vendor = await User.findOneAndUpdate(
       {_id: id, role: 'Vendor' },
-      { status: 'rejected', rejectionreason: reason || 'Not specified' },
-      { new: true }
+      { 
+        status: 'rejected', 
+        rejectionReason: reason || 'Not specified' 
+      },
+      { 
+        new: true,
+        runValidators: true,
+      }
     ).select('-password');
 
     if (!vendor) return next(new createError('Vendor not found', 404));
