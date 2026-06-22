@@ -192,13 +192,11 @@ exports.getPendingWithdrawalRequests = async (req, res, next) => {
     const search = req.query.search || '';
     const skip = (page - 1) * limit;    
 
-    const filter = {
-      status,
-    };
+    const filter = {};
 
-    /*if(status !== 'all') {
+    if(!search && status !== 'all') {
       filter.status = status;
-    }*/
+    }
 
     if (search) {
       filter.$or = [
