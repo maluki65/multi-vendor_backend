@@ -153,13 +153,44 @@ exports.getAllOrders = async(req, res, next) => {
 exports.getBuyerOrders = async ( req, res, next ) => {
   try {
     const buyerId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 3;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
 
-    const orders = await Order.find({ buyerId })
-    .sort({ createdAt: -1 });
+    const query = {
+      buyerId
+    }
+
+    if (search) {
+      query.$or = [
+        {
+          orderNumber: {
+            $regex: search,
+            $options: 'i',
+          },
+        },
+      ];
+    };
+     
+    const totalOrders = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
+     .populate({
+      path: 'vendorId',
+      select: 'businessInfo.legalName',
+     })
+     .sort({ createdAt: -1 })
+     .skip(skip)
+     .limit(limit)
+     .lean();
 
     res.status(200).json({
       status: 'success',
       results: orders.length, 
+      totalOrders,
+      currentPage: page,
+      totalPages: Math.ceil(totalOrders / limit),
       orders
     });
   } catch (error) {
@@ -215,7 +246,8 @@ exports.updateOrderStatus = async (req, res, next) => {
       'pending', 
       'processing', 
       'shipped', 
-      'completed'
+      'completed',
+      'cancelled',
     ];
 
     if (!validStatuses.includes(status)) {
@@ -247,6 +279,8 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     const buyerTransitions = {
       shipped: ['completed'],
+      pending: ['cancelled'],
+      processing: ['cancelled'],
     };
 
     const adminTransitions = {
