@@ -83,6 +83,76 @@ exports.creditPendingBalance = async (orderId, session) => {
   return wallet;
 };
 
+// on reserving credit balance when an order is cancelled
+exports.reversePendingBalance = async(orderId, session) => {
+  const order = await Order.findById(orderId).session(session);
+
+  if (!order) {
+    throw new createError('Order not found!', 404);
+  }
+
+  if (!order.earningsCredited) {
+    return;
+  }
+
+  if (order.settled) {
+    throw new createError(
+      'This order has already been settled and cannot be cancelled.',
+      400
+    );
+  }
+
+  const wallet = await Wallet.findOne({
+    vendorId: order.vendorId,
+  }).session(session);
+
+  if (!wallet) {
+    throw new createError('Wallet not found', 404);
+  }
+
+  if (wallet.pendingBalance < order.vendorEarnings) {
+    throw new createError(
+      'Vendor pending balance is insufficient.',
+      400
+    );
+  }
+
+  const balanceBefore = wallet.pendingBalance;
+
+  wallet.pendingBalance -= order.vendorEarnings;
+  wallet.totalEarnings -= order.vendorEarnings;
+  wallet.totalCommissionGenerated -= order.platformCommission || 0;
+
+  const balanceAfter = wallet.pendingBalance;
+
+  await WalletTransaction.create([{
+    vendorId: order.vendorId,
+    walletId: wallet._id,
+
+    type: 'order_cancelled',
+    direction: 'debit',
+
+    amount: order.vendorEarnings,
+
+    balanceBefore,
+    balanceAfter,
+
+    referenceId: order._id,
+    referenceModel: 'Order',
+
+    description: `Pending earnings reversed for cancelled order ${order.orderNumber}`,
+
+    status: 'completed',
+  }], { session });
+
+  order.earningsCredited = false;
+  order.earningsCreditedAt = null;
+  order.settlementDate = null;
+
+  await wallet.save({ session });
+  await order.save({ session });
+}
+
 // On reserving withdrawals (called when vendor request a withdrawal request: moves funds from available bal to reserved bal)
 exports.reserveWithdrawalFunds = async ({ 
   walletId,

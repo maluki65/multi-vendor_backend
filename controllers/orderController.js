@@ -154,12 +154,31 @@ exports.getBuyerOrders = async ( req, res, next ) => {
   try {
     const buyerId = req.user.id;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 3;
+    const limit = parseInt(req.query.limit) || 5;
+    const status = req.query.status || 'all';
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
     const query = {
       buyerId
+    }
+
+    if (status != 'all') {
+      switch (status) {
+        case 'processing':
+          query.orderStatus = {
+            $in: ['pending', 'processing', 'shipped'],
+          };
+          break;
+
+        case 'cancelled':
+          query.orderStatus = 'cancelled';
+          break;
+
+        case 'completed':
+          query.orderStatus = 'completed';
+          break;
+      }
     }
 
     if (search) {
@@ -349,6 +368,12 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (status === 'processing') {
       updateData.processingAt = new Date();
     }
+
+    /*if (status === 'cancelled') {
+      updateData.cancelledAt = new Date();
+    
+      updateData.settlementStatus = 'cancelled';
+    }*/
 
     if (status === 'shipped') {
       updateData.shippedAt = new Date();
