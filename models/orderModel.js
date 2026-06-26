@@ -70,8 +70,10 @@ const orderSchema = new mongoose.Schema({
   shippedAt: {
     type: Date,
   },
-
   completedAt: {
+    type: Date,
+  },
+  cancelledAt: {
     type: Date,
   },
 
@@ -87,6 +89,12 @@ const orderSchema = new mongoose.Schema({
   settled: {
     type: Boolean,
     default: false,
+  },
+
+  settlementStatus: {
+    type: String,
+    enum: ['pending',  'settled', 'cancelled', 'failed'],
+    default: 'pending',
   },
 
   settlementDate: {

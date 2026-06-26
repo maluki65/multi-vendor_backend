@@ -369,11 +369,11 @@ exports.updateOrderStatus = async (req, res, next) => {
       updateData.processingAt = new Date();
     }
 
-    /*if (status === 'cancelled') {
+    if (status === 'cancelled') {
       updateData.cancelledAt = new Date();
     
       updateData.settlementStatus = 'cancelled';
-    }*/
+    }
 
     if (status === 'shipped') {
       updateData.shippedAt = new Date();

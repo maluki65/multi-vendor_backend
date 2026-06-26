@@ -81,6 +81,7 @@ const runSettlement = async () => {
 
       order.settled = true;
       order.settledAt = new Date();
+      order.settlementStatus = 'settled';
 
       await wallet.save({ session });
       await order.save({ session });
