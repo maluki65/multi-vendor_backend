@@ -204,13 +204,20 @@ exports.getBuyerOrders = async ( req, res, next ) => {
      .limit(limit)
      .lean();
 
+    const orderProducts = orders.map(order => ({
+      ...order,
+      productCount: order.products?.reduce(
+        (total, product) => total + product.quantity, 0
+      ),
+    }));
+
     res.status(200).json({
       status: 'success',
-      results: orders.length, 
+      results: orderProducts.length, 
       totalOrders,
       currentPage: page,
       totalPages: Math.ceil(totalOrders / limit),
-      orders
+      orders: orderProducts
     });
   } catch (error) {
     console.error('Failed to get buyer orders', error);
