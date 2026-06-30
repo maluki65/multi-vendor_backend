@@ -1,39 +1,54 @@
-const zones = [
-  {
-    name: 'Nairobi',
-    counties: ['Nairobi'],
-    fee: 10000 // in cents
+const SHIPPING_RATE = {
+  Nairobi: {
+    default: 25000,
+    areas: {
+      'Nyayo highrise': 15000,
+      SouthB: 18000,
+      SouthC: 20000,
+      Westlands: 25000,
+      Kilimani: 22000,
+      Karen: 40000,
+      Embakasi: 30000,
+    },
   },
-  {
-    name: 'Nairobi',
-    counties: ['Kiambu'],
-    fee: 20000 // in cents
+
+  Kiambu: {
+    default: 35000,
+    areas: {
+      Ruiru: 30000,
+      Thika: 40000,
+      Kikuyu: 35000,
+    },
   },
-  {
-    name: 'Outside Nairobi',
-    counties: ['*'],
-    fee: 40000 // in cents
+
+  Mombasa: {
+    default: 45000,
+  },
+
+  Nakuru: {
+    default: 40000,
+  },
+};
+
+const getShippingFee = (location = {}) => {
+  const county = location.county?.trim();
+  const area = location.area?.trim();
+
+  if (!county) return 0;
+
+  const countyRates = SHIPPING_RATE[county];
+
+  if (!countyRates) {
+    return 400;
   }
-];
 
-const getZone = (location) => {
-  if (!location?.county) return null;
-
-  return zones.find(zone => 
-    zone.counties.includes(location.county)
-  ) || zones.find(z => z.counties.includes('*'));
-};
-
-const getShippingFee = (location) => {
-  if (!location?.county) {
-    return 0;
+  if (
+    area && countyRates.area && countyRates.area[area] !== undefined
+  ) {
+    return countyRates.area[area];
   }
-  
-  const zone = getZone(location);
-  return zone ? zone.fee : 0;
+
+  return countyRates.default;
 };
 
-module.exports = {
-  getShippingFee,
-  getZone
-};
+module.exports = { getShippingFee };

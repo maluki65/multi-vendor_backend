@@ -106,27 +106,21 @@ exports.getCart = async (req, res, next) => {
   try {
     const buyerId = req.user.id;
 
-    const { county, area } = req.query;
-
-    const location = county ?  { county, area } : null;
-
     const cart = await Cart.findOne({ buyerId }) || { items: [] };
 
     const totalItems = calculateTotalItems(cart);
     const groupedCart = normalizeCartByVendor(cart);
 
-    const pricing = calculateCartPricing(cart, location);
-
-    const hasLocation = !!county;
+    const pricing = calculateCartPricing(cart);
 
     res.status(200).json({ 
       status: 'success',
       cart: groupedCart,
       totalItems,
-      pricing: hasLocation ? pricing : null
+      pricing,
     });
   } catch (error) {
-    console.error('Failed to get cart!');
+    console.error('Failed to get cart!', error);
     next(error);
   }
 };
