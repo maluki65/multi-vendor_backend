@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
-const { prepareCheckOut, getCheckoutSession, getAllCheckoutSessions, resumeCheckout, completeCheckout } = require('../controllers/checkoutController');
+const { prepareCheckOut, getCheckoutSession, getAllCheckoutSessions, resumeCheckout, completeCheckout, updateCheckoutShipping } = require('../controllers/checkoutController');
 
 const router = express.Router();
 
@@ -13,5 +13,6 @@ router.get('/session/:sessionId', protect, restrictTo('Buyer'), getCheckoutSessi
 router.get('/sessions', protect, restrictTo('Buyer'), getAllCheckoutSessions);
 
 router.patch('/resume/:sessionId', protect, restrictTo('Buyer'), resumeCheckout);
+router.patch('/shipping/:sessionId', protect, restrictTo('Buyer'),updateCheckoutShipping);
 
 module.exports = router;

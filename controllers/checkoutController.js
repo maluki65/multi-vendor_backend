@@ -290,7 +290,7 @@ exports.completeCheckout = async (req, res, next) => {
     if (session.status === 'completed')
       return next(new createError('Checkout already completed', 400));
 
-    // On simulating payment (add mpesa && card payment  later)
+    // On simulating payment (add mpesa && card payment  later)  return m-pesa transaction code
 
     session.paymentStatus = 'completed';
     session.status = 'completed';
@@ -354,6 +354,60 @@ exports.completeCheckout = async (req, res, next) => {
     });
   } catch (error){
     console.error('Failed to create error', error);
+    next(error);
+  }
+};
+
+exports.updateCheckoutShipping = async (req, res, next) => {
+  try {
+    const buyerId = req.user.id;
+    const { sessionId } = req.params;
+    const { county, area } = req.body;
+
+    const session = await CheckoutSession.findOne({
+      _id: sessionId,
+      buyerId,
+    });
+
+    if (!session) {
+      return next(new createError('Checkout session not found', 404));
+    }
+
+    if (session.status !== 'active') {
+      return next(new createError('Checkout can no longer be updated', 400));
+    }
+
+    const normalizedItems = session.items.map(item => ({
+      price: item.basePrice,
+      discount: item.discount,
+      discountPrice: item.finalPrice,
+      quantity: item.quantity,
+    }));
+
+    const pricing = buildPricing({
+      items: normalizedItems,
+      location: {
+        county,
+        area,
+      },
+    });
+
+    session.shippingAddress = {
+      county,
+      area,
+    };
+
+    session.pricing = pricing;
+
+    await session.save();
+
+    res.status(200).json({
+      status: 'success',
+      session,
+    });
+
+  } catch (error) {
+    console.error('Failed to update shipping', error);
     next(error);
   }
 };

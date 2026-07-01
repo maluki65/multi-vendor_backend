@@ -1,7 +1,7 @@
 const SHIPPING_RATE = {
   Nairobi: {
     default: 25000,
-    areas: {
+    area: {
       'Nyayo highrise': 15000,
       SouthB: 18000,
       SouthC: 20000,
@@ -14,7 +14,7 @@ const SHIPPING_RATE = {
 
   Kiambu: {
     default: 35000,
-    areas: {
+    area: {
       Ruiru: 30000,
       Thika: 40000,
       Kikuyu: 35000,
@@ -39,7 +39,7 @@ const getShippingFee = (location = {}) => {
   const countyRates = SHIPPING_RATE[county];
 
   if (!countyRates) {
-    return 400;
+    return 40000;
   }
 
   if (
