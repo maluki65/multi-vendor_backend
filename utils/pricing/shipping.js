@@ -30,25 +30,39 @@ const SHIPPING_RATE = {
   },
 };
 
-const getShippingFee = (location = {}) => {
-  const county = location.county?.trim();
-  const area = location.area?.trim();
+const normalize = (text = '') => 
+  text
+  .toLowerCase()
+  .replace(/[\s-]/g, '')
+  .trim();
 
-  if (!county) return 0;
+  const getShippingFee = (location = {}) => {
+    const county = location.county.trim();
 
-  const countyRates = SHIPPING_RATE[county];
+    if (!county) return 0;
 
-  if (!countyRates) {
-    return 40000;
-  }
+    const countyRates = SHIPPING_RATE[county];
 
-  if (
-    area && countyRates.area && countyRates.area[area] !== undefined
-  ) {
-    return countyRates.area[area];
-  }
+    if (!countyRates) {
+      return 45000;
+    }
 
-  return countyRates.default;
-};
+    const area = normalize(location.area);
 
+    if (area && countyRates.area) {
+      for (const [configuredArea, fee] of Object.entries(countyRates.area)) {
+        const normalizedConfigured = normalize(configuredArea);
+
+        if (
+          area.includes(normalizedConfigured) ||
+          normalizedConfigured.includes(area)
+        ) {
+          return fee;
+        }
+      }
+    }
+
+    return countyRates.default;
+  };
+ 
 module.exports = { getShippingFee };

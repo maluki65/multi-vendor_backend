@@ -5,6 +5,7 @@ const Product = require('../models/productModel');
 const createError = require('../utils/appError');
 const APIFeatures = require('../utils/APIFeatures');
 const ImageKit = require('../config/imgKit');
+const refreshCheckoutShipping = require('../services/refreshCheckoutShipping');
 
 // On getting user info
 exports.getUserInfo = async (req, res, next) => {
@@ -186,6 +187,10 @@ exports.updateBuyerProfile = async (req, res, next) => {
       profileUpdate,
       { new: true, upsert: true }
     );
+
+    if (addresses?.length > 0) {
+      await refreshCheckoutShipping(userId, addresses[0]);
+    }
 
     if (avatar && oldAvatarId) {
       setImmediate(async () => {
