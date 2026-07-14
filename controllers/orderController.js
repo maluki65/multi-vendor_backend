@@ -4,6 +4,7 @@ const createError = require('../utils/appError');
 const VendorProfile = require('../models/vendorProfileModel');
 const BuyerProfile = require('../models/buyerModel');
 const { creditPendingBalance } = require('../services/walletService');
+const generateTrackingID = require('../utils/generateTrackingID');
 
 // On vendor getting their orders for the store
 exports.getVendorOrders = async (req, res, next) => {
@@ -425,6 +426,8 @@ exports.createOrder = async (req, res, next) => {
     const buyerId = req.user.id;
     const { vendorId, products, totalAmount, shippingAddress } = req.body;
 
+    const trackingID = await generateTrackingID();
+
     const order = await Order.create({
       buyerId,
       vendorId,
@@ -433,6 +436,7 @@ exports.createOrder = async (req, res, next) => {
       shippingAddress,
       paymentStatus: 'completed',
       orderStatus: 'processing',
+      trackingID,
     });
 
     res.status(201).json({

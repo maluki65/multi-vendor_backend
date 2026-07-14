@@ -114,6 +114,7 @@ const orderSchema = new mongoose.Schema({
   mpesaReceipt: { type: String, default: 'Simulated' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  trackingID: { type: String, unique: true, required: true, index: true }
 }, { timestamps: true });
 
 // On auto-updating `updatedAt` field before saving
@@ -122,6 +123,6 @@ orderSchema.pre('save', function (next){
   next();
 });
 
-orderSchema.index({ buyerId: 1, vendorId:1, 'products.productId': 1, orderStatus: 1, orderNumber: 1, createdAt: -1 });
+orderSchema.index({ buyerId: 1, vendorId:1, 'products.productId': 1, orderStatus: 1, orderNumber: 1, trackingID: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

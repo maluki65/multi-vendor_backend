@@ -6,6 +6,7 @@ const Category = require('../models/CategoryModel');
 const { buildPricing } = require('../utils/pricing/service');
 const Order = require('../models/orderModel');
 const generateOrderNumber = require('../utils/generateOrderNumber');
+const generateTrackingID = require('../utils/generateTrackingID');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -313,6 +314,7 @@ exports.completeCheckout = async (req, res, next) => {
       }));
 
       const orderNumber = await generateOrderNumber(Order);
+      const trackingID = await generateTrackingID();
 
       const order = await Order.create({
         orderNumber,
@@ -333,24 +335,31 @@ exports.completeCheckout = async (req, res, next) => {
 
         paymentProvider: 'Simulated',
         paymentReference: `SIM-${Date.now()}`,
+        trackingID,
       });
 
-      createdOrders.push(order._id);
+      createdOrders.push(order);
     }
 
     // On linking order to session
     session.orderIds = createdOrders;
     await session.save();
 
-    await Cart.findOneAndUpdate(
+    const cart = await Cart.findOneAndUpdate(
       { buyerId },
-      { $set: { items: []}, updatedAt: Date.now()}
+      { 
+        $set: { 
+          items: []
+        }, //updatedAt: Date.now()
+      },
+      { new: true }
     );
 
     res.status(200).json({
       status: 'success',
       message: 'Payment successful & order created',
       orders: createdOrders,
+      cart,
     });
   } catch (error){
     console.error('Failed to create error', error);
