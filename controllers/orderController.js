@@ -5,6 +5,7 @@ const VendorProfile = require('../models/vendorProfileModel');
 const BuyerProfile = require('../models/buyerModel');
 const { creditPendingBalance } = require('../services/walletService');
 const generateTrackingID = require('../utils/generateTrackingID');
+const Product = require('../models/productModel');
 
 // On vendor getting their orders for the store
 exports.getVendorOrders = async (req, res, next) => {
@@ -311,10 +312,11 @@ exports.updateOrderStatus = async (req, res, next) => {
     };
 
     const adminTransitions = {
-      pending: ['processing'],
-      processing: ['shipped'],
+      pending: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
       shipped: [],
       completed: [],
+      cancelled: [],
     };
 
     const currentStatus = order.orderStatus;
@@ -378,7 +380,30 @@ exports.updateOrderStatus = async (req, res, next) => {
     }
 
     if (status === 'cancelled') {
+      for (const item of order.products) {
+        const updatedProduct = await Product.findByIdAndUpdate(
+          item.productId,
+          {
+            $inc: {
+              quantity: item.quantity,
+            },
+          },
+          {
+            new: true,
+            session,
+          }
+        );
+    
+        if (!updatedProduct) {
+          throw new createError(
+            `Product "${item.name}" no longer exists.`,
+            404
+          );
+        }
+      }
+
       updateData.cancelledAt = new Date();
+      updateData.paymentStatus = 'refund';
     
       updateData.settlementStatus = 'cancelled';
     }
@@ -450,30 +475,80 @@ exports.createOrder = async (req, res, next) => {
 
 // On cancelling orders
 exports.cancelOrder  = async (req, res, next) => {
+  const mongoSession = await mongoose.startSession();
+
   try{
+    mongoSession.startTransaction();
+
     const { id } = req.params;
 
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).session(mongoSession);
+
     if(!order) return next(new createError('Order not found', 404));
 
     // On checking buyer permission
     if (req.user.role === 'Buyer') {
-      if (order.buyerId.toString() !== req.user.id)
-        return next(new createError('Not authorized to cancel this order', 403))
+      if (order.buyerId.toString() !== req.user.id) {
+        throw new createError(
+          'Not authorized to cancel this order',
+          403
+        );
+      }
 
-      if (order.orderStatus === 'shipped' || order.orderStatus == 'completed')
-        return next(new createError("You can't cancel this order anymore", 400));
+      if (
+        order.orderStatus === 'shipped' ||
+        order.orderStatus === 'completed'
+      ) {
+        throw new createError(
+          "You can't cancel this order anymore.",
+          400
+        );
+      }
     }
 
     // On making sure vendor cannot cancel order
     if (req.user.role === 'Vendor') {
-      return next(new createError('Vendor cannot cancel orders', 403));
+      throw new createError(
+        'Vendor cannot cancel orders.',
+        403
+      );
+    }
+
+    // On preventing duplicate cancellation
+    if (order.orderStatus === 'cancelled') {
+      throw new createError(
+        'Order has already been cancelled.',
+        400
+      );
+    }
+
+    // On restoring inventory
+    for (const item of order.products) {
+      const updatedProduct = await Product.findByIdAndUpdate(
+        item.productId,
+        {
+          $inc: {
+            quantity: item.quantity,
+          },
+        },
+        {
+          new: true,
+          session:mongoSession,
+        }
+      );
+
+      if (!updatedProduct) {
+        throw new createError(
+          `Product '${item.name}' no longer exists.`,
+          404
+        );
+      }
     }
 
     const oldStatus = order.orderStatus;
 
     order.orderStatus = 'cancelled';
-    order.paymentStatus = 'failed';
+    order.paymentStatus = 'refund';
 
     order.statusHistory.push({
       from: oldStatus,
@@ -482,15 +557,21 @@ exports.cancelOrder  = async (req, res, next) => {
       role: req.user.role,
     });
 
-    await order.save();
+    await order.save({ session: mongoSession });
+
+    await mongoSession.commitTransaction();
 
     res.status(200).json({
       status: 'success',
       message: 'Order cancelled successfully',
-      order
+      order,
     });
 
   } catch(error){
+    await mongoSession.abortTransaction();
+    console.log('Failed to cancel order', error);
     next(error);
+  } finally {
+    await mongoSession.endSession();
   }
 };

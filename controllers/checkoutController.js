@@ -7,6 +7,7 @@ const { buildPricing } = require('../utils/pricing/service');
 const Order = require('../models/orderModel');
 const generateOrderNumber = require('../utils/generateOrderNumber');
 const generateTrackingID = require('../utils/generateTrackingID');
+const mongoose = require('mongoose');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -47,7 +48,9 @@ exports.prepareCheckOut = async (req, res, next) => {
     const productIds = cart.items.map(i => i.productId);
 
     const products = await Product.find({
-      _id: { $in: productIds }
+      _id: { $in: productIds },
+      visibility: 'published',
+      //moderationStatus: 'approved',
     }).populate('category');
 
     const productMap = {};
@@ -76,15 +79,11 @@ exports.prepareCheckOut = async (req, res, next) => {
       const product = productMap[item.productId.toString()];
 
       if (!product) {
-        throw new createError(`${item.name} no longer exists`, 400);
+        throw new createError(`${item.name} no longer exists or is unavailable.`, 400);
       }
 
       if (product.quantity < item.quantity) {
         throw new createError(`${product.name} is out of stock`, 400)
-      }
-
-      if (product.visibility !== 'published') {
-        throw new createError(`${product.name} is unavailable`, 400)
       }
 
       // on price locking
@@ -128,7 +127,7 @@ exports.prepareCheckOut = async (req, res, next) => {
         discount,
         discountPrice: finalPrice,
         quantity: item.quantity,
-      })
+      });
     }
 
     // on grouping by vendor
@@ -279,44 +278,91 @@ exports.resumeCheckout = async (req, res, next) => {
 };
 
 exports.completeCheckout = async (req, res, next) => {
-  try{
+  const mongoSession = await mongoose.startSession();
+
+  try {
+    mongoSession.startTransaction();
+
     const { sessionId } = req.params;
     const buyerId = req.user.id;
 
-    const session = await CheckoutSession.findById(sessionId);
+    const session = await CheckoutSession.findById(sessionId).session(mongoSession);
 
-    if(!session) 
-      return next(new createError('Checkout session not found!', 404));
+    if (!session) {
+      throw new createError('Checkout session not found!', 404);
+    }
 
-    if (session.status === 'completed')
-      return next(new createError('Checkout already completed', 400));
+    if (session.status === 'completed') {
+      throw new createError('Checkout already completed', 400);
+    }
+
+    if (session.expiresAt < new Date()) {
+      throw new createError('Checkout session has expired.', 400);
+    }
 
     // On simulating payment (add mpesa && card payment  later)  return m-pesa transaction code
 
     session.paymentStatus = 'completed';
     session.status = 'completed';
 
+    // On verifing stock and reducing inventory
+    for (const item of session.items) {
+      const updatedProduct = await Product.findOneAndUpdate({
+        _id: item.productId,
+        visibility: 'published',
+        //moderationStatus: 'approved',
+        quantity: {
+          $gte: item.quantity,
+        },
+      },
+      {
+        $inc: {
+          quantity: -item.quantity,
+        },
+      },
+      {
+        new: true,
+        session: mongoSession,
+      }
+    );
+
+    if (!updatedProduct) {
+      throw new createError(
+        `${item.name} is unavailable or has insufficient stock.`,
+        400
+      );
+    }
+    }
+
+    // On creating orders
     const createdOrders = [];
 
     for (const vendor of session.vendors) {
       const vendorItems = session.items.filter(
-        item => item.vendorId.toString() === vendor.vendorId.toString()
+        item => 
+          item.vendorId.toString() === vendor.vendorId.toString()
       );
 
       const products = vendorItems.map(item => ({
         productId: item.productId,
+
         name: item.name,
-        price: item.finalPrice,
-        quantity: item.quantity,
-        commissionRate: item.commissionRate,
-        commissionAmount: item.commissionAmount,
         image: item.image,
+
+        originalPrice: item.basePrice,
+        price: item.finalPrice,
+        discount: item.discount,
+
+        quantity: item.quantity,
+
+        commissionRate: item.commissionRate,
+        commissionAmount: item.commissionAmount,        
       }));
 
       const orderNumber = await generateOrderNumber(Order);
       const trackingID = await generateTrackingID();
 
-      const order = await Order.create({
+      const order = new Order({
         orderNumber,
 
         buyerId,
@@ -338,12 +384,15 @@ exports.completeCheckout = async (req, res, next) => {
         trackingID,
       });
 
+      await order.save({ session: mongoSession });
       createdOrders.push(order);
     }
 
-    // On linking order to session
-    session.orderIds = createdOrders;
-    await session.save();
+    session.orderIds = createdOrders.map(order => order._id);
+
+    await session.save({
+      session: mongoSession,
+    });
 
     const cart = await Cart.findOneAndUpdate(
       { buyerId },
@@ -352,8 +401,12 @@ exports.completeCheckout = async (req, res, next) => {
           items: []
         }, //updatedAt: Date.now()
       },
-      { new: true }
+      { new: true,
+        session: mongoSession,
+      }
     );
+
+    await mongoSession.commitTransaction();
 
     res.status(200).json({
       status: 'success',
@@ -361,9 +414,13 @@ exports.completeCheckout = async (req, res, next) => {
       orders: createdOrders,
       cart,
     });
-  } catch (error){
-    console.error('Failed to create error', error);
+  } catch (error) {
+    await mongoSession.abortTransaction();
+
+    console.log('Failed to complete checkout', error);
     next(error);
+  } finally {
+    await mongoSession.endSession();
   }
 };
 
