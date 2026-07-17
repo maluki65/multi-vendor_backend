@@ -159,7 +159,6 @@ exports.createProduct = async (req, res, next ) => {
   }
 };
 
-
 // On getting all products for all vendors (Buyer)
 exports.getAllProducts = async (req, res, next) => {
   try {
@@ -505,7 +504,6 @@ exports.getPendingProducts = async (req, res, next) => {
   }
 };
 
-
 // On approving products
 exports.approveProducts = async (req, res, next) => {
   try {
@@ -814,6 +812,153 @@ exports.getSmartRecomendations = async (req, res, next) => {
 
   } catch (error) {
     console.log('Failed to get product recommedations:', error),
+    next(error);
+  }
+};
+
+// On creating filter helper for faceted search
+const buildBaseMAtch = (query, exclude = []) => {
+  const match = {
+    visibility: 'published',
+    moderationStatus: 'approved',
+  };
+
+  if (!exclude.includes('brand') && query.brand) {
+    match.brand = {
+      $in: query.brand.split(',')
+    };
+  }
+
+  if (!exclude.includes('category') && query.category) {
+    match.category = {
+      $in: query.category.split(',')
+    };
+  }
+
+  if (!exclude.includes('price')) {
+    if (query.minPrice || query.maxPrice) {
+      match.price = {};
+
+      if (query.minPrice)
+        match.price.$gte = Number(query.minPrice);
+
+      if (query.maxPrice)
+        match.price.$lte = Number(query.maxPrice);
+    }
+  }
+
+  if (query.search){
+    match.$text = {
+      $search: query.search
+    };
+  }
+
+  return match;
+};
+
+// On creating the filter(faceted search)
+exports.getProductFilter = async (req, res, next) => {
+  try{ 
+    const brandMatch = buildBaseMAtch(req.query, ['brand']);
+    const priceMatch = buildBaseMAtch(req.query, ['price']);
+    const categoryMatch = buildBaseMAtch(req.query, ['category']);
+
+    const [brands, categories, prices] = await Promise.all([
+      Products.aggregate([
+        { $match: brandMatch },
+
+        {
+          $group: {
+            _id: '$brand',
+            count: { $sum: 1 }
+          }
+        },
+
+        {
+          $project: {
+            _id: 0,
+            name: '$_id',
+            count: 1
+          }
+        },
+
+        {
+          $sort: {
+            count: -1,
+            name: 1
+          }
+        }
+      ]),
+
+      Products.aggregate([
+        { $match: categoryMatch },
+
+        {
+          $group:{
+            _id: '$category',
+            count: {
+              $sum: 1
+            }
+          }
+        },
+
+        {
+          $lookup: {
+            from: 'categories',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'category'
+          }
+        },
+
+        {
+          $unwind: '$category'
+        },
+
+        {
+          $project: {
+            _id: '$category._id',
+            name: '$category.name',
+            parent: '$category.parent',
+            count: 1
+          }
+        },
+
+        {
+          $sort: {
+            name: 1
+          }
+        }
+      ]),
+
+      Products.aggregate([
+        { $match: priceMatch },
+
+        {
+          $group: {
+            _id: null,
+            min: {
+              $min: '$price'
+            },
+            max: {
+              $max: '$price'
+            }
+          }
+        }
+      ])
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      brands,
+      categories,
+      priceRange: prices[0] || {
+        min: 0,
+        max: 0
+      }
+    });
+  } catch (error) {
+    console.error('Failed to aggregate faceted search', error);
     next(error);
   }
 };

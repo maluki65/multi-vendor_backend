@@ -6,20 +6,74 @@ class APIFeatures {
 
   filter() {
     const queryObj = { ...this.queryString };
-    const excluded = ['page', 'limit', 'sort', 'search'];
-    excluded.forEach(el => delete queryObj[el]);
+  
+    ['page', 'limit', 'sort', 'search'].forEach(key =>
+      delete queryObj[key]
+    );
   
     const mongoQuery = {};
   
-    for (let key in queryObj) {
-      if (typeof queryObj[key] === 'object') {
-        mongoQuery[key] = queryObj[key];
+    // Brand
+    if (queryObj.brand) {
+
+      if (typeof queryObj.brand === "object") {
+    
+          mongoQuery.brand = queryObj.brand;
+    
       } else {
-        mongoQuery[key] = queryObj[key];
+    
+          mongoQuery.brand = {
+              $in: queryObj.brand.split(',')
+          };
+    
       }
+    
+    }
+  
+    // Category
+    if (queryObj.category) {
+
+      if (typeof queryObj.category === "object") {
+    
+          mongoQuery.category = queryObj.category;
+    
+      } else {
+    
+          mongoQuery.category = {
+              $in: queryObj.category.split(',')
+          };
+    
+      }
+    
+    }
+  
+    // Price
+    if (queryObj.minPrice || queryObj.maxPrice) {
+      mongoQuery.price = {};
+  
+      if (queryObj.minPrice)
+        mongoQuery.price.$gte = Number(queryObj.minPrice);
+  
+      if (queryObj.maxPrice)
+        mongoQuery.price.$lte = Number(queryObj.maxPrice);
+    }
+  
+    // Everything else
+    for (const key in queryObj) {
+      if (
+        [
+          'brand',
+          'category',
+          'minPrice',
+          'maxPrice'
+        ].includes(key)
+      ) continue;
+  
+      mongoQuery[key] = queryObj[key];
     }
   
     this.query = this.query.find(mongoQuery);
+  
     return this;
   }
 
