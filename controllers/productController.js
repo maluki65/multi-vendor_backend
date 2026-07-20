@@ -863,96 +863,89 @@ exports.getProductFilter = async (req, res, next) => {
     const priceMatch = buildBaseMAtch(req.query, ['price']);
     const categoryMatch = buildBaseMAtch(req.query, ['category']);
 
-    const [brands, categories, prices] = await Promise.all([
-      Products.aggregate([
-        { $match: brandMatch },
-
-        {
-          $group: {
-            _id: '$brand',
-            count: { $sum: 1 }
-          }
-        },
-
-        {
-          $project: {
-            _id: 0,
-            name: '$_id',
-            count: 1
-          }
-        },
-
-        {
-          $sort: {
-            count: -1,
-            name: 1
-          }
-        }
-      ]),
-
-      Products.aggregate([
-        { $match: categoryMatch },
-
-        {
-          $group:{
-            _id: '$category',
-            count: {
-              $sum: 1
-            }
-          }
-        },
-
-        {
-          $lookup: {
-            from: 'categories',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'category'
-          }
-        },
-
-        {
-          $unwind: '$category'
-        },
-
-        {
-          $project: {
-            _id: '$category._id',
-            name: '$category.name',
-            parent: '$category.parent',
-            count: 1
-          }
-        },
-
-        {
-          $sort: {
-            name: 1
-          }
-        }
-      ]),
-
-      Products.aggregate([
-        { $match: priceMatch },
-
-        {
-          $group: {
-            _id: null,
-            min: {
-              $min: '$price'
+    const [result] = await Products.aggregate([
+      {
+        $facet: {
+          brands: [
+            { $match: brandMatch },
+            {
+              $group: {
+                _id: '$brand',
+                count: { $sum: 1 }
+              }
             },
-            max: {
-              $max: '$price'
+            {
+              $project: {
+                _id: 0,
+                name: '$_id',
+                count: 1
+              }
+            },
+            {
+              $sort: {
+                count: -1,
+                name: 1,
+              }
             }
-          }
+          ],
+
+          categories: [
+            { $match: categoryMatch },
+            {
+              $group: {
+                _id: '$category',
+                count: { $sum: 1 }
+              }
+            },
+            {
+              $lookup: {
+                from: 'categories',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'category'
+              }
+            },
+            { $unwind: '$category' },
+
+            {
+              $project: {
+                _id: '$category._id',
+                name: '$category.name',
+                parent: '$category.parent',
+                count: 1
+              }
+            },
+            { $sort: { name: 1 } }
+          ],
+
+          priceRange: [
+            { $match: priceMatch },
+            {
+              $group: {
+                _id: null,
+                min: { $min: '$price' },
+                max: { $max: '$price' }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                min: 1,
+                max: 1
+              }
+            }
+          ]
         }
-      ])
+      }
     ]);
+
+    //console.log('Brand match', result.brands)
 
     res.status(200).json({
       status: 'success',
-      brands,
-      categories,
-      priceRange: prices[0] || {
+      brands: result.brands,
+      categories: result.categories,
+      priceRange: result.priceRange[0] || {
         min: 0,
         max: 0
       }

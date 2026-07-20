@@ -8,6 +8,7 @@ const Order = require('../models/orderModel');
 const generateOrderNumber = require('../utils/generateOrderNumber');
 const generateTrackingID = require('../utils/generateTrackingID');
 const mongoose = require('mongoose');
+const generateCheckoutID = require('../utils/generateCheckoutId');
 
 // On helper function for getting commission (child > parent fallback)
 const getCommissionRate = async (categoryMap, categoryId) => {
@@ -162,6 +163,8 @@ exports.prepareCheckOut = async (req, res, next) => {
       location: { county, area },
     });
 
+    const checkoutID = await generateCheckoutID()
+
     const session = await CheckoutSession.create({
       buyerId,
       items: snapShotItems,
@@ -171,6 +174,7 @@ exports.prepareCheckOut = async (req, res, next) => {
         area,
       },
       pricing,
+      checkoutUUID: checkoutID,
       
       commissionSummary: {
         totalCommission,

@@ -95,6 +95,13 @@ const checkoutSessionSchema = new mongoose.Schema({
     index: true,
   },
 
+  checkoutUUID: {
+    type: String,
+    required: true,
+    index: true,
+    unique: true,
+  },
+
   orderIds: [
     {
       type: mongoose.Schema.Types.ObjectId,
