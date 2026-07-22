@@ -234,7 +234,7 @@ exports.getAllCheckoutSessions = async (req, res, next) => {
 
     const sessions = await CheckoutSession.find({ buyerId })
       .sort({ createdAt: -1 })
-      .select('pricing status paymentStatus expiresAt createdAt');
+      .select('pricing status paymentStatus expiresAt checkoutUUID shippingAddress.county shippingAddress.area createdAt');
 
     res.status(200).json({
       status: 'succes',
@@ -261,14 +261,28 @@ exports.resumeCheckout = async (req, res, next) => {
       return next(new createError('Checkout not found', 404));
     }
 
-    if (session.status === 'completed'){
-      return next(new createError('Checkout already completed'),400);
+    if (session.status === 'completed' || session.paymentStatus === 'completed'){
+      return next(new createError('Checkout already completed'), 400);
     }
 
-    if (session.expiresAt < new Date()) {
+    if (
+      session.status === 'expired' && 
+      ['pending', 'failed'].includes(session.paymentStatus)
+    ){
       session.status = 'active';
+      session.paymentStatus = 'pending';
       session.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
       await session.save();
+    } else if (
+      session.status === 'active' &&
+      session.paymentStatus === 'failed'
+    ) {
+      session.paymentStatus = 'pending';
+
+      await session.save()
+    } else {
+      return next(new createError('Checkout cannot be resumed', 400));
     }
 
     res.status(200).json({

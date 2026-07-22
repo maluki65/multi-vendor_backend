@@ -23,7 +23,7 @@ const generateCheckoutID = async () => {
 
   while (exists) {
     checkoutID = randomCheckoutID();
-    exists = await Checkout.exists({ checkoutID });
+    exists = await Checkout.exists({ checkoutUUID: checkoutID });
   }
 
   return checkoutID
