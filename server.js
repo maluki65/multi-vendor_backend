@@ -17,7 +17,8 @@ const CheckOutRoutes = require('./routes/checkoutRoute.js');
 const WishlistRoutes = require('./routes/wishlistRoute.js');
 const StartSettlementCron = require('./services/settelmentCronJob.js');
 const WalletRoutes = require('./routes/walletRoutes.js');
-
+const StartCheckoutExpiryCron = require('./services/checkoutCron.js');
+ 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
@@ -52,6 +53,7 @@ app.use(globalErrorHandler);
 mongoose.connect(process.env.MONGO_URI).then(() => console.log(`Database connected to ${mongoose.connection.name} at port ${PORT}`)).catch((error) => console.log('Failed to connect to database', error));
 
 StartSettlementCron();
+StartCheckoutExpiryCron();
 
 app.listen(process.env.PORT || PORT, () => {
   console.log(`Server started at port: ${PORT}`);

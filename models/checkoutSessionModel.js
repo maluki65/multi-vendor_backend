@@ -122,7 +122,6 @@ const checkoutSessionSchema = new mongoose.Schema({
 
 checkoutSessionSchema.index(
   { expiresAt: 1 },
-  { expireAfterSeconds: 0 }
 );
 
 module.exports = mongoose.model('CheckoutSession', checkoutSessionSchema);

@@ -108,7 +108,7 @@ const startSettlementCron = () => {
     await runSettlement();
   });
 
-  console.log('Settelement cron initialized');
+  console.log('Settlement cron initialized');
 };
 
 module.exports = startSettlementCron;

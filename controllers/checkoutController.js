@@ -194,6 +194,7 @@ exports.prepareCheckOut = async (req, res, next) => {
   }
 };
 
+// for Admin
 exports.getCheckoutSession = async (req, res, next) => {
   try{
     const { sessionId } = req.params;
@@ -228,17 +229,30 @@ exports.getCheckoutSession = async (req, res, next) => {
   }
 }
 
+// for Buyer
 exports.getAllCheckoutSessions = async (req, res, next) => {
   try{
     const buyerId = req.user.id;
 
-    const sessions = await CheckoutSession.find({ buyerId })
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 1;
+    const skip = (page - 1) * limit;
+
+    const [sessions, total] = await Promise.all([
+      CheckoutSession.find({ buyerId })
       .sort({ createdAt: -1 })
-      .select('pricing status paymentStatus expiresAt checkoutUUID shippingAddress.county shippingAddress.area createdAt');
+      .skip(skip)
+      .limit(limit)
+      .select('pricing status paymentStatus expiresAt checkoutUUID shippingAddress.county shippingAddress.area createdAt'),
+      CheckoutSession.countDocuments({ buyerId }),
+    ]);
 
     res.status(200).json({
       status: 'succes',
       result: sessions.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
       sessions,
     });
   } catch (error) {
@@ -315,6 +329,9 @@ exports.completeCheckout = async (req, res, next) => {
     }
 
     if (session.expiresAt < new Date()) {
+      session.status = 'expired';
+      await session.save({ session: mongoSession });
+
       throw new createError('Checkout session has expired.', 400);
     }
 
