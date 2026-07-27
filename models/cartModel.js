@@ -22,6 +22,12 @@ const cartItemSchema = new mongoose.Schema({
   productQuantity: Number,
   discount: Number,
   discountPrice: Number,
+
+  selectedAttributes: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendorProfile',

@@ -44,7 +44,7 @@ const normalizeCartByVendor = (cart) => {
 exports.AddToCart = async (req, res, next) => {
   try{
     const buyerId = req.user.id;
-    const { productId, quantity } = req.body;
+    const { productId, quantity, selectedAttributes = {} } = req.body;
 
     const product = await Product.findById(productId);
     if(!product) return next(new createError('product not found', 404));
@@ -53,14 +53,19 @@ exports.AddToCart = async (req, res, next) => {
     const snapshop = {
       productId,
       quantity,
+
       name: product.name,
       price: product.price,
       image: product.MainIMg,
+      
       vendorId: product.vendorId,
       discount: product.discount,
       discountPrice: product.discountPrice,
+
       description: product.description,
       productQuantity: product.quantity,
+
+      selectedAttributes,
     };
 
     let cart = await Cart.findOne({ buyerId });
@@ -72,9 +77,20 @@ exports.AddToCart = async (req, res, next) => {
         items: [ snapshop ]
       });
     } else {
-      const item = cart.items.find(
-        i => i.productId.toString() === productId.toString()
-      );
+      const item = cart.items.find((i) => {
+        const attributes = i.selectedAttributes || {};
+
+        const sameAttributes =
+          Object.keys(attributes).length ===
+            Object.keys(selectedAttributes).length &&
+          Object.entries(selectedAttributes).every(
+            ([key, value]) => attributes[key] === value
+          );
+
+        return (
+          i.productId.toString() === productId.toString() && sameAttributes
+        );
+      });
 
       if (item) {
         item.quantity += quantity;

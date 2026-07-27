@@ -425,14 +425,18 @@ exports.getProductById =  async (req, res, next ) => {
 
     if(!product) return next(new createError('Product not found!', 404));
 
-    const attributes = await ProductAttribute
-     .find({ productId: product._id })
-     .populate('attributeId', 'name type');
+    const attributes = await ProductAttribute.find({
+      productId: product._id
+    }).populate('attributeId', 'name type');
+
+    const productObj = product.toObject();
+
+    productObj.attributes = attributes;
 
     res.status(200).json({ 
       status: 'Success', 
-      product,
-      attributes
+      product: productObj,
+      //attributes
     });
   } catch (error) {
     console.error('Failed to get product', error);
@@ -472,10 +476,14 @@ exports.getProductBySlugId = async(req, res, next) => {
       productId: product._id
     }).populate('attributeId', 'name type');
 
+    const productObj = product.toObject();
+
+    productObj.attributes = attributes;
+
     res.status(200).json({
       status: 'success',
-      product,
-      attributes,
+      product: productObj,
+      //attributes,
       productCount
     });
   } catch (error) {
