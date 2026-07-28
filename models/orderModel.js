@@ -7,6 +7,12 @@ const orderItemSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+
+  selectedAttributes: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  
   name: String,
   image: String,
   price: Number,

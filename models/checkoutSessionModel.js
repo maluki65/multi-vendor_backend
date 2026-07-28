@@ -22,6 +22,11 @@ const checkoutItemSchema = new mongoose.Schema({
     index: true
   },
 
+  selectedAttributes: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+
   name: String,
   image: String,
 

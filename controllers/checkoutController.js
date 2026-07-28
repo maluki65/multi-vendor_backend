@@ -121,6 +121,8 @@ exports.prepareCheckOut = async (req, res, next) => {
 
         commissionRate,
         commissionAmount,
+
+        selectedAttributes: item.selectedAttributes || {},
       });
 
       normalizedItems.push({
@@ -182,6 +184,8 @@ exports.prepareCheckOut = async (req, res, next) => {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
+    console.log(session.items);
+
     res.status(200).json({
       status: 'success',
       checkout: {
@@ -200,7 +204,7 @@ exports.getCheckoutSession = async (req, res, next) => {
     const { sessionId } = req.params;
 
     const session = await CheckoutSession.findById(sessionId)
-      .populate('items.vendorId', 'businessInfo.legalName logo banner')
+      .populate('items.vendorId', 'businessInfo.legalName logo banner selectedAttributes')
       .populate('vendors.vendorId', 'businessInfo.legalName logo banner');
 
     if (!session) {
@@ -391,7 +395,9 @@ exports.completeCheckout = async (req, res, next) => {
         quantity: item.quantity,
 
         commissionRate: item.commissionRate,
-        commissionAmount: item.commissionAmount,        
+        commissionAmount: item.commissionAmount, 
+        
+        selectedAttributes: item.selectedAttributes || {},
       }));
 
       const orderNumber = await generateOrderNumber(Order);
