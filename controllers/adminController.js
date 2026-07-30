@@ -8,7 +8,7 @@ const { sendMail } = require('../utils/nodemailer');
 const mongoose = require('mongoose');
 const Product = require('../models/productModel');
 const ImageKit = require('../config/imgKit');
-const Verification = require('../models/verifications');
+const KYC = require('../models/kyc');
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -351,26 +351,26 @@ exports.approveVendor = async (req, res, next) => {
       return next(new createError('Vendor not found!.', 404));
     }
 
-    const verification = await Verification.findOne({
-      verificationId: id,
+    const kyc = await KYC.findOne({
+      kycId: id,
     });
 
     const errors = [];
 
-    if(!verification) {
-      errors.push('Verification record not found.');
+    if(!kyc) {
+      errors.push('KYC record not found.');
     } else {
       if (
-        !Array.isArray(verification.verificationFiles) || verification.verificationFiles.length === 0
+        !Array.isArray(kyc.kycFiles) || kyc.kycFiles.length === 0
       ) {
-        errors.push('No verification documents uploaded.');
+        errors.push('No KYC documents uploaded.');
       }
 
-      if (!verification.signature?.trim()) {
+      if (!kyc.signature?.trim()) {
         errors.push('Signature is missing.');
       }
 
-      if (!verification.termsConditions){
+      if (!kyc.termsConditions){
         errors.push('Terms & Conditions have not been accepted.');
       }
     }
@@ -446,7 +446,7 @@ exports.rejectVendor = async (req, res, next) => {
       message: `${vendor.storeName}'s vendor request has been rejected.`, vendor,
     });
   }  catch (error){
-    console.error('Vendor rejectio failed:', error);
+    console.error('Vendor rejection failed:', error);
     next(error);
   }
 };

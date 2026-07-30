@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-const verificationSchema = new mongoose.Schema({
-  verificationId: {
+const kycSchema = new mongoose.Schema({
+  kycId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Users',
     required: true,
@@ -9,7 +9,7 @@ const verificationSchema = new mongoose.Schema({
     index: true,
   },
 
-  verificationFiles:[
+  kycFiles:[
     {
       url: { type: String, required: true },
       fileId: { type: String, required: true },
@@ -20,6 +20,6 @@ const verificationSchema = new mongoose.Schema({
   termsConditions: { type: Boolean, required: true },    
 }, { timestamps: true });
 
-verificationSchema.index({ verificationId: 1, signature: 1, createdAt: -1 });
+kycSchema.index({ kycId: 1, signature: 1, createdAt: -1 });
 
-module.exports = mongoose.model('verificationDocs', verificationSchema);
+module.exports = mongoose.model('kycDocs', kycSchema);

@@ -5,7 +5,7 @@ const { protect } = require('../middlewares/middleware');
 const { restrictTo } = require('../middlewares/roleMiddleware');
 const User = require('../models/userModel');
 const { getAllCommissions, getCommissionByVendor, getTotalAdminCommission } = require('../controllers/commissionController');
-const { addVerificationInfo, getVerificationInfo, getVerificationByUserId  } = require('../controllers/verificationController');
+const { addKycInfo, getKycInfo, getKycByUserId  } = require('../controllers/kycController');
 const { getBuyerProfileById } = require('../controllers/buyerController');
 const { getVendorProfileById } = require('../controllers/vendorController');
 const { getPendingProducts, approveProducts, rejectProducts } = require('../controllers/productController');
@@ -17,7 +17,7 @@ const router = express.Router();
 router.post('/categories', protect, restrictTo('Admin'), AddCategory);
 router.post('/profile', protect, restrictTo('Admin'), createAdminProfile);
 router.post('/create', protect, restrictTo('Admin'), authController.admin);
-router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
+router.post('/kyc', protect, restrictTo('Vendor', 'Admin'), addKycInfo);
 
 // On promoting user to admin
 router.patch('/promote/:id', protect, restrictTo('Admin'), updateUserRole);
@@ -34,8 +34,8 @@ router.get('/vendor/pending', protect, restrictTo('Admin', 'Vendor'), getPending
 
 // On searching users
 router.get('/search', protect, restrictTo('Admin'), searchUsers);
-router.get('/verification/all', protect, restrictTo('Admin'), getVerificationInfo);
-router.get('/verification/:id', protect, restrictTo('Admin'), getVerificationByUserId);
+router.get('/kyc/all', protect, restrictTo('Admin'), getKycInfo);
+router.get('/kyc/:id', protect, restrictTo('Admin'), getKycByUserId);
 router.get('/vendors/:id/profile', protect, restrictTo('Admin'), getVendorProfileById);
 router.get('/buyers/:id/profile', protect, restrictTo('Admin'), getBuyerProfileById);
 

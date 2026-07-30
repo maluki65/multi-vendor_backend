@@ -4,13 +4,13 @@ const { restrictTo } = require('../middlewares/roleMiddleware');
 const { createVendorProfile, updateVendorProfile, updateVendorMedia, getVendorStats, getVendorProfile, getVendorAnalytics  } = require('../controllers/vendorController');
 const { getVendorEarnings } = require('../controllers/vendorEarningsController'); 
 const { createProduct, getVendorProducts, getProductById, updateProduct, deleteProduct, vendorGuard } = require('../controllers/productController');
-const { addVerificationInfo, getVerificationInfo, updateVerificationInfo } = require('../controllers/verificationController');
+const { addKycInfo, getKycInfo, updateKycInfo } = require('../controllers/kycController');
 const User = require('../models/userModel');
 const { getAllActiveCategories } = require('../controllers/categoryController');
 
 const router = express.Router();
 
-// On re-applying verification
+// On re-applying kyc
 router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (req, res, next) => {
   try {
     const vendor = await User.findByIdAndUpdate(
@@ -30,7 +30,7 @@ router.patch('/vendor/request-approval', protect, restrictTo('Vendor'), async (r
 
 // On authenticated vendor route
 router.post('/profile', protect, restrictTo('Vendor'), createVendorProfile);
-router.post('/verification', protect, restrictTo('Vendor', 'Admin'), addVerificationInfo);
+router.post('/kyc', protect, restrictTo('Vendor', 'Admin'), addKycInfo);
 
 router.patch('/profile/update', protect, restrictTo('Vendor'), updateVendorProfile);
 router.patch('/update/media', protect, restrictTo('Vendor'), updateVendorMedia);
@@ -50,10 +50,10 @@ router.get('/products/:id', protect, restrictTo('Vendor', 'Buyer'), getVendorPro
 
 router.get('/product/:id', protect, restrictTo('Vendor', 'Buyer'), getProductById);
 
-router.get('/verification/me', protect, restrictTo('Vendor', 'Admin'), getVerificationInfo);
+router.get('/kyc/me', protect, restrictTo('Vendor', 'Admin'), getKycInfo);
 
 router.patch('/product/update/:id', protect, restrictTo('Vendor'), updateProduct);
-router.patch('/verification/resubmit', protect, restrictTo('Vendor', 'Admin'), updateVerificationInfo);
+router.patch('/kyc/resubmit', protect, restrictTo('Vendor', 'Admin'), updateKycInfo);
 
 router.delete('/product/delete/:id', protect, restrictTo('Vendor'), deleteProduct);
 
