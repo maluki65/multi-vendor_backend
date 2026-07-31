@@ -6,7 +6,7 @@ const createError = require('../utils/appError');
 exports.addToWishlist = async(req, res, next) => {
   try {
     const buyerId = req.user.id;
-    const { productId }= req.body;
+    const { productId, selectedAttributes = {} }= req.body;
 
     if(!productId) return next(new createError('Product ID is required!', 400));
 
@@ -21,7 +21,10 @@ exports.addToWishlist = async(req, res, next) => {
     if(!wishlist){
       wishlist = await Wishlist.create({
         buyerId,
-        items: [{ productId }],
+        items: [{ 
+          productId,
+          selectedAttributes,
+        }],
       });
       
       return res.status(201).json({
@@ -31,15 +34,42 @@ exports.addToWishlist = async(req, res, next) => {
       });
     }
 
-    const exstingProduct = wishlist.items.some(
-      (item) => item.productId.toString() === productId
-    );
+    //console.log("Incoming:", selectedAttributes);
+
+    /*console.log(
+        wishlist.items.map(item => ({
+            attrs: item.selectedAttributes,
+            product: item.productId.toString()
+        }))
+    );*/
+
+    const exstingProduct = wishlist.items.some((item) => {
+      if (item.productId.toString() !== productId.toString()) {
+        return false;
+      }
+
+      const savedAttributes = item.selectedAttributes instanceof Map
+       ? Object.fromEntries(item.selectedAttributes)
+       : item.selectedAttributes  || {};
+
+      const savedKeys = Object.keys(savedAttributes).sort();
+      const incomingKeys = Object.keys(selectedAttributes).sort();
+
+      if (savedKeys.length !== incomingKeys.length) return false;
+
+      return savedKeys.every(
+        (key) => savedAttributes[key] === selectedAttributes[key]
+      );
+    });
 
     if (exstingProduct){
       return next(new createError('Product already in wishlist!', 400));
     }
 
-    wishlist.items.push({ productId });
+    wishlist.items.push({ 
+      productId,
+      selectedAttributes,
+    });
 
     await wishlist.save();
 
@@ -59,37 +89,139 @@ exports.getWishlist = async(req, res, next) => {
   try{
     const buyerId = req.user.id;
 
-    const wishlist = await Wishlist.findOne({ buyerId })
-     .populate({
-      path: 'items.productId',
-      populate: [
-        {
-          path: 'vendorId',
-          model: 'VendorProfile',
-        },
-        {
-          path: 'category',
-          model:'Category',
-        },
-      ],
-    });
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit) || 10, 1);
+    const skip = (page - 1) * limit;
 
-    if (!wishlist) {
+    const [result] = await Wishlist.aggregate([
+      {
+        $match: {
+          buyerId,
+        },
+      },
+    
+      {
+        $unwind: '$items',
+      },
+    
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'items.productId',
+          foreignField: '_id',
+          as: 'productId',
+        },
+      },
+    
+      {
+        $unwind: '$productId',
+      },
+    
+      {
+        $lookup: {
+          from: 'vendorprofiles',
+          localField: 'productId.vendorId',
+          foreignField: '_id',
+          as: 'vendor',
+        },
+      },
+    
+      {
+        $unwind: {
+          path: '$vendor',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'productId.category',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+    
+      {
+        $unwind: {
+          path: '$category',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    
+      {
+        $addFields: {
+          'productId.vendorId': '$vendor',
+          'productId.category': '$category',
+        },
+      },
+    
+      {
+        $project: {
+          _id: '$items._id',
+          productId: 1,
+          selectedAttributes: '$items.selectedAttributes',
+          addedAt: '$items.addedAt',
+        },
+      },
+    
+      {
+        $facet: {
+          metadata: [
+            {
+              $count: 'totalItems',
+            },
+          ],
+    
+          wishlist: [
+            {
+              $sort: {
+                addedAt: -1,
+              },
+            },
+            {
+              $skip: skip,
+            },
+            {
+              $limit: limit,
+            },
+          ],
+        },
+      },
+    ]);
+
+    if (!result) {
       return res.status(200).json({
         status: 'success',
         results: 0,
         wishlist: [],
+        pagination: {
+          page,
+          limit,
+          totalPages: 0,
+          totalItems: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       });
     }
 
-    const validProducts = wishlist.items.filter(
-      (item) => item.productId !== null
-    );
+    const totalItems = result.metadata[0]?.totalItems || 0;
+    const totalPages = Math.ceil(totalItems / limit);
 
     res.status(200).json({
       status: 'success',
-      results: validProducts.length,
-      wishlist: validProducts,
+      results: result.wishlist.length,
+      wishlist: result.wishlist,
+
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     console.error('Error getting wishlist', error);
@@ -101,10 +233,10 @@ exports.getWishlist = async(req, res, next) => {
 exports.removeFromWishlist = async(req, res, next) => {
   try{
     const buyerId = req.user.id;
-    const { productId } = req.params;
+    const { wishlistItemId } = req.params;
 
-    if (!productId){
-      return next(new createError('Product ID is required!', 400));
+    if (!wishlistItemId){
+      return next(new createError('wishlistItem ID is required!', 400));
     }
 
     const wishlist = await Wishlist.findOne({ buyerId });
@@ -114,7 +246,7 @@ exports.removeFromWishlist = async(req, res, next) => {
     }
 
     const productExists = wishlist.items.some(
-      (item) => item.productId.toString() === productId
+      (item) => item._id.toString() === wishlistItemId
     );
 
     if (!productExists) {
@@ -122,7 +254,7 @@ exports.removeFromWishlist = async(req, res, next) => {
     }
 
     wishlist.items = wishlist.items.filter(
-      (item) => item.productId.toString() !== productId
+      (item) => item._id.toString() !== wishlistItemId
     );
 
     await wishlist.save();

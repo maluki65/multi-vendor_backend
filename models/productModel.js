@@ -116,7 +116,7 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-productSchema.index({ vendorId:1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, featured: -1, brand: -1, sponsored: -1, shortId: -1, createdAt: -1 });
+productSchema.index({ vendorId: 1, visibility: 1, /*status: 1,*/ price: 1, MainIMg: 1, slug: 1, moderationStatus: 1, featured: -1, brand: -1, sponsored: -1, shortId: -1, createdAt: -1 });
 
 productSchema.index({
   name: 'text',

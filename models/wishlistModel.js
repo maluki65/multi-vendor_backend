@@ -7,7 +7,17 @@ const wishlistItemSchema = new mongoose.Schema({
     required: true,
     index: true,
   },  
-}, { _id: false});
+
+  selectedAttributes: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+
+  addedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
 const wishListSchema = new mongoose.Schema({
   buyerId:{

@@ -9,7 +9,7 @@ router.post('/add', protect, restrictTo('Buyer'), addToWishlist);
 
 router.get('/', protect, restrictTo('Buyer'), getWishlist);
 
-router.delete('/remove/:productId', protect, restrictTo('Buyer'), removeFromWishlist);
+router.delete('/remove/:wishlistItemId', protect, restrictTo('Buyer'), removeFromWishlist);
 
 router.delete('/clear', protect, restrictTo('Buyer'), clearWishlist);
 
