@@ -27,6 +27,12 @@ const checkoutItemSchema = new mongoose.Schema({
     default: {},
   },
 
+  cartItemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    index: true,
+},
+
   name: String,
   image: String,
 
@@ -37,7 +43,7 @@ const checkoutItemSchema = new mongoose.Schema({
 
   commissionRate: Number,
   commissionAmount: Number,
-}, {_id: false });
+});
 
 const vendorBreakDownSchema = new mongoose.Schema({
   vendorId: {

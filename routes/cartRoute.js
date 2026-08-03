@@ -17,6 +17,6 @@ router.put('/update', protect, restrictTo('Buyer'), updateCartQuantity);
 router.put('/clear', protect, restrictTo('Buyer'), clearCart);
 
 // On DELETE routes
-router.delete('/delete/:productId', protect, restrictTo('Buyer'), removeFromCart);
+router.delete('/delete/:cartItemId', protect, restrictTo('Buyer'), removeFromCart);
 
 module.exports = router;

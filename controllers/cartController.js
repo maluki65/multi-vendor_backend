@@ -28,7 +28,10 @@ const normalizeCartByVendor = (cart) => {
       };
     }
 
-    grouped[vid].items.push(item);
+    grouped[vid].items.push({
+      ...item.toObject(),
+      cartItemId: item._id,
+    });
 
     const unitPrice = item.discount > 0 ? item.discountPrice : item.price;
 
@@ -145,7 +148,7 @@ exports.getCart = async (req, res, next) => {
 exports.updateCartQuantity = async (req, res, next) => {
   try {
     const buyerId = req.user.id;
-    const { productId, quantity } = req.body;
+    const { cartItemId, quantity } = req.body;
 
     if (quantity < 0) {
       return next(new createError('Quantity cannot be negative', 400));
@@ -154,12 +157,12 @@ exports.updateCartQuantity = async (req, res, next) => {
     const cart =  await Cart.findOne({ buyerId });
     if (!cart) return next(new createError('Product in cart not found', 404));
 
-    const item = cart.items.find(i => i.productId.toString() === productId.toString());
+    const item = cart.items.find(i => i._id.toString() === cartItemId.toString());
     if (!item) return next(new createError('Product in cart not found', 404));
 
     // If quantity is 0, remove item from cart
     if (quantity === 0) {
-      cart.items = cart.items.filter( i => i.productId.toString() !== productId);
+      cart.items = cart.items.filter( i => i._id.toString() !== cartItemId);
     } else {
       item.quantity = quantity;
     }
@@ -167,9 +170,11 @@ exports.updateCartQuantity = async (req, res, next) => {
     cart.updatedAt = Date.now();
     await cart.save();
 
+    const groupedCart = normalizeCartByVendor(cart);
+
     res.status(200).json({
       status: 'Success',
-      cart
+      cart: groupedCart
     });
 
   } catch(error) {
@@ -182,13 +187,18 @@ exports.updateCartQuantity = async (req, res, next) => {
 exports.removeFromCart = async (req, res, next) => {
   try{
     const buyerId = req.user.id;
-    const { productId } = req.params;
+    const { cartItemId } = req.params;
 
-    const cart = await Cart.findOneAndUpdate(
-      { buyerId },
-      { $pull: { items: { productId }}},
-      { new: true }
+    const cart = await Cart.findOne({ buyerId });
+    if (!cart) {
+      return next(new createError('Cart not found:', 404));
+    }
+
+    cart.items = cart.items.filter(
+      item => item._id.toString() !== cartItemId
     );
+
+    await cart.save();
 
     res.status(200).json({
       status: 'success',

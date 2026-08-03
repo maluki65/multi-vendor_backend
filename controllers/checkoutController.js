@@ -106,6 +106,7 @@ exports.prepareCheckOut = async (req, res, next) => {
       totalCommission += commissionAmount * item.quantity;
 
       snapShotItems.push({
+        cartItemId: item._id,
         productId: product._id,
         name: product.name,
         image: product.MainIMg,
@@ -184,7 +185,7 @@ exports.prepareCheckOut = async (req, res, next) => {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    console.log(session.items);
+    //console.log(session.items);
 
     res.status(200).json({
       status: 'success',
@@ -383,6 +384,7 @@ exports.completeCheckout = async (req, res, next) => {
       );
 
       const products = vendorItems.map(item => ({
+        cartItemId: item.cartItemId,
         productId: item.productId,
 
         name: item.name,
@@ -434,6 +436,23 @@ exports.completeCheckout = async (req, res, next) => {
     await session.save({
       session: mongoSession,
     });
+
+    /*const purchasedIds = session.items.map(i => i.cartItemId);
+
+    await Cart.findOneAndUpdate(
+      { buyerId },
+      {
+        $pull: {
+          items: {
+            _id: { $in: purchasedIds }
+          }
+        }
+      },
+      {
+        new: true,
+        session: mongoSession,
+      }
+    );*/
 
     const cart = await Cart.findOneAndUpdate(
       { buyerId },
